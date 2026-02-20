@@ -153,6 +153,7 @@ export class ObsidianCliRestPlugin extends Plugin {
 
         // Only assign after successful start to avoid orphaning
         this.httpServer = httpServer
+        sharedHttpServer = httpServer
         this.mcpServer = mcpServer
         this.updateStatusBar()
     }
