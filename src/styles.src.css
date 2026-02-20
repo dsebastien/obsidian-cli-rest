@@ -8,3 +8,14 @@
 .support-header-margin {
     @apply mb-5;
 }
+
+/* ========================================
+   CLI REST SETTINGS
+   ======================================== */
+
+.cli-rest-warning {
+    @apply p-3 mb-4 rounded text-sm;
+    background-color: var(--background-modifier-error);
+    color: var(--text-error);
+    border: 1px solid var(--text-error);
+}

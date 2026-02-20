@@ -1,68 +1,248 @@
-import { Plugin } from 'obsidian'
-import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
+import { Notice, Plugin } from 'obsidian'
+import { DEFAULT_SETTINGS, pluginSettingsSchema } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
-import { MyPluginSettingTab } from './settings/settings-tab'
+import { ObsidianCliRestSettingTab } from './settings/settings-tab'
 import { log } from '../utils/log'
 import { produce } from 'immer'
 import type { Draft } from 'immer'
+import { generateApiKey } from '../utils/crypto'
+import { checkCliAvailability } from './services/cli-availability-checker'
+import type { CliAvailabilityResult } from './services/cli-availability-checker'
+import { HttpServerWrapper } from './services/http-server'
+import { McpServerWrapper } from './services/mcp-server'
+import { registerToggleServerCommand, registerCopyApiKeyCommand } from './commands/toggle-server'
 
-// TODO: Rename this class to match your plugin name (e.g., MyAwesomePlugin)
-export class MyPlugin extends Plugin {
-    /**
-     * The plugin settings are immutable
-     */
+/**
+ * Module-level reference to the active HTTP server.
+ * Survives across plugin instance reloads within the same Electron process,
+ * allowing a new instance to properly close the previous instance's server
+ * even when onunload() can't be awaited.
+ */
+let sharedHttpServer: HttpServerWrapper | null = null
+
+export class ObsidianCliRestPlugin extends Plugin {
     settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+    cliStatus: CliAvailabilityResult = {
+        available: false,
+        binaryPath: '',
+        version: '',
+        error: 'Not checked yet'
+    }
 
-    /**
-     * Executed as soon as the plugin loads
-     */
-    override async onload() {
+    private httpServer: HttpServerWrapper | null = null
+    private mcpServer: McpServerWrapper | null = null
+    private statusBarEl: HTMLElement | null = null
+
+    override async onload(): Promise<void> {
         log('Initializing', 'debug')
         await this.loadSettings()
 
-        // TODO
+        // Check CLI availability
+        this.cliStatus = await checkCliAvailability()
+        if (!this.cliStatus.available) {
+            new Notice(
+                'Obsidian CLI REST: CLI binary not found. Install the Obsidian CLI to use this plugin.'
+            )
+        }
 
-        // Add a settings screen for the plugin
-        this.addSettingTab(new MyPluginSettingTab(this.app, this))
+        // Auto-generate API key on first enable if empty
+        if (!this.settings.apiKey) {
+            this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
+                draft.apiKey = generateApiKey()
+            })
+            await this.saveSettings()
+        }
+
+        // Register commands
+        registerToggleServerCommand(this)
+        registerCopyApiKeyCommand(this)
+
+        // Add settings tab
+        this.addSettingTab(new ObsidianCliRestSettingTab(this.app, this))
+
+        // Status bar
+        this.statusBarEl = this.addStatusBarItem()
+        this.updateStatusBar()
+
+        // Auto-start server (with retry for port release during reload)
+        if (this.settings.autoStart) {
+            await this.startServerWithRetry()
+        }
     }
 
-    override onunload() {}
+    override onunload(): void {
+        void this.stopServer()
+    }
 
     /**
-     * Load the plugin settings
+     * Start the server with retry logic to handle EADDRINUSE during
+     * plugin reloads (the old server may not have fully released the port yet).
      */
-    async loadSettings() {
-        log('Loading settings', 'debug')
-        let loadedSettings = (await this.loadData()) as PluginSettings
+    private async startServerWithRetry(): Promise<void> {
+        const MAX_RETRIES = 3
+        const RETRY_DELAY_MS = 500
 
-        if (!loadedSettings) {
-            log('Using default settings', 'debug')
-            loadedSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                await this.startServer()
+                return
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : 'Unknown error'
+                const isPortInUse = msg.includes('EADDRINUSE')
+
+                if (isPortInUse && attempt < MAX_RETRIES) {
+                    log(
+                        `Port in use, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt}/${MAX_RETRIES})`,
+                        'warn'
+                    )
+                    await this.delay(RETRY_DELAY_MS)
+                } else {
+                    log(`Auto-start failed: ${msg}`, 'error')
+                    new Notice(`Obsidian CLI REST: Failed to start server: ${msg}`)
+                    return
+                }
+            }
+        }
+    }
+
+    private delay(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms))
+    }
+
+    async startServer(): Promise<void> {
+        await this.stopServer()
+
+        // Close any orphaned server from a previous plugin instance
+        if (sharedHttpServer?.isRunning) {
+            log('Closing orphaned server from previous instance', 'debug')
+            await sharedHttpServer.stop()
+        }
+        sharedHttpServer = null
+
+        // Enforce API key when binding to all interfaces
+        if (this.settings.bindAddress === '0.0.0.0' && !this.settings.apiKey) {
+            this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
+                draft.apiKey = generateApiKey()
+            })
+            await this.saveSettings()
+            new Notice('API key auto-generated (required when binding to 0.0.0.0)')
+        }
+
+        const context = {
+            settings: this.settings,
+            cliStatus: this.cliStatus
+        }
+
+        // Create MCP server if enabled
+        let mcpServer: McpServerWrapper | null = null
+        if (this.settings.enableMcp) {
+            mcpServer = new McpServerWrapper(context)
+        }
+
+        // Create HTTP server (don't assign to this.httpServer until start succeeds)
+        const httpServer = new HttpServerWrapper({
+            port: this.settings.port,
+            bindAddress: this.settings.bindAddress,
+            apiKey: this.settings.apiKey,
+            enableCors: this.settings.enableCors,
+            context,
+            mcpHandler: mcpServer ? (req, res) => mcpServer.handleRequest(req, res) : undefined
+        })
+
+        await httpServer.start()
+
+        // Only assign after successful start to avoid orphaning
+        this.httpServer = httpServer
+        this.mcpServer = mcpServer
+        this.updateStatusBar()
+    }
+
+    async stopServer(): Promise<void> {
+        if (this.mcpServer) {
+            await this.mcpServer.close()
+            this.mcpServer = null
+        }
+
+        if (this.httpServer) {
+            await this.httpServer.stop()
+            this.httpServer = null
+        }
+
+        this.updateStatusBar()
+    }
+
+    isServerRunning(): boolean {
+        return this.httpServer?.isRunning ?? false
+    }
+
+    async restartServer(): Promise<void> {
+        await this.stopServer()
+        await this.startServer()
+    }
+
+    async recheckCli(): Promise<void> {
+        this.cliStatus = await checkCliAvailability()
+        if (this.httpServer) {
+            this.httpServer.updateContext({
+                settings: this.settings,
+                cliStatus: this.cliStatus
+            })
+        }
+        if (this.mcpServer) {
+            this.mcpServer.updateContext({
+                settings: this.settings,
+                cliStatus: this.cliStatus
+            })
+        }
+    }
+
+    private updateStatusBar(): void {
+        if (!this.statusBarEl) {
             return
         }
 
-        let needToSaveSettings = false
-
-        this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
-            if (loadedSettings.enabled) {
-                draft.enabled = loadedSettings.enabled
-            } else {
-                log('The loaded settings miss the [enabled] property', 'debug')
-                needToSaveSettings = true
-            }
-        })
-
-        log(`Settings loaded`, 'debug', loadedSettings)
-
-        if (needToSaveSettings) {
-            void this.saveSettings()
+        if (this.isServerRunning()) {
+            this.statusBarEl.setText(`CLI REST: ${this.settings.bindAddress}:${this.settings.port}`)
+        } else {
+            this.statusBarEl.setText('CLI REST: off')
         }
     }
 
-    /**
-     * Save the plugin settings
-     */
-    async saveSettings() {
+    async loadSettings(): Promise<void> {
+        log('Loading settings', 'debug')
+        const loadedData = (await this.loadData()) as unknown
+
+        if (!loadedData) {
+            log('Using default settings', 'debug')
+            this.settings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+            return
+        }
+
+        const parsed = pluginSettingsSchema.safeParse(loadedData)
+        if (parsed.success) {
+            this.settings = parsed.data
+        } else {
+            log('Invalid settings, merging with defaults', 'warn')
+            // Merge loaded data with defaults for forward compatibility
+            const raw = loadedData as Record<string, unknown>
+            this.settings = produce(DEFAULT_SETTINGS, (draft: Draft<PluginSettings>) => {
+                for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof PluginSettings)[]) {
+                    if (key in raw) {
+                        const fieldParsed = pluginSettingsSchema.shape[key].safeParse(raw[key])
+                        if (fieldParsed.success) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            ;(draft as any)[key] = fieldParsed.data
+                        }
+                    }
+                }
+            })
+            await this.saveSettings()
+        }
+
+        log('Settings loaded', 'debug', this.settings)
+    }
+
+    async saveSettings(): Promise<void> {
         log('Saving settings', 'debug', this.settings)
         await this.saveData(this.settings)
         log('Settings saved', 'debug', this.settings)

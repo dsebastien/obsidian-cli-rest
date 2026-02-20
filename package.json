@@ -1,11 +1,11 @@
 {
-    "name": "obsidian-my-plugin",
-    "version": "2.3.0",
-    "description": "TODO: Add your plugin description here",
+    "name": "obsidian-cli-rest",
+    "version": "0.1.0",
+    "description": "Exposes Obsidian CLI commands as RESTful API endpoints and an MCP server for AI tool integration",
     "author": {
-        "name": "Your Name",
-        "email": "your-email@example.com",
-        "url": "https://your-website.com"
+        "name": "Sébastien Dubois",
+        "email": "sebastien@dsebastien.net",
+        "url": "https://dsebastien.net"
     },
     "keywords": [
         "obsidian",
@@ -15,12 +15,12 @@
     "private": true,
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/your-username/obsidian-my-plugin.git"
+        "url": "git+https://github.com/dsebastien/obsidian-cli-rest.git"
     },
     "bugs": {
-        "url": "https://github.com/your-username/obsidian-my-plugin/issues"
+        "url": "https://github.com/dsebastien/obsidian-cli-rest/issues"
     },
-    "homepage": "https://github.com/your-username/obsidian-my-plugin",
+    "homepage": "https://github.com/dsebastien/obsidian-cli-rest",
     "engines": {
         "node": ">=20.0.0",
         "npm": ">=10.1.0"
@@ -83,6 +83,7 @@
         "typescript-eslint": "8.48.1"
     },
     "dependencies": {
+        "@modelcontextprotocol/sdk": "1.26.0",
         "immer": "11.0.1",
         "zod": "^4.1.13"
     }

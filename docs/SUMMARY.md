@@ -2,6 +2,9 @@
 
 - [Overview](README.md)
 - [Usage](usage.md)
+- [API reference](api-reference.md)
+- [MCP integration](mcp-integration.md)
+- [Command reference](command-reference.md)
 - [Configuration](configuration.md)
-- [Tips](tips.md)
-- [Release Notes](release-notes.md)
+- [Tips and troubleshooting](tips.md)
+- [Release notes](release-notes.md)

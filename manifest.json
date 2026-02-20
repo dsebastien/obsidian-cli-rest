@@ -1,10 +1,10 @@
 {
-    "id": "my-plugin",
-    "name": "My Plugin",
-    "description": "TODO: Add your plugin description here",
-    "version": "2.3.0",
+    "id": "obsidian-cli-rest",
+    "name": "Obsidian CLI REST",
+    "description": "Exposes Obsidian CLI commands as RESTful API endpoints and an MCP server for AI tool integration",
+    "version": "0.1.0",
     "minAppVersion": "1.4.0",
-    "isDesktopOnly": false,
+    "isDesktopOnly": true,
     "author": "Sébastien Dubois",
     "authorUrl": "https://dsebastien.net",
     "fundingUrl": "https://www.buymeacoffee.com/dsebastien"
