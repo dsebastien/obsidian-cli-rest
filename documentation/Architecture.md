@@ -85,10 +85,12 @@ HTTP Request
 ### MCP layer (`src/app/services/mcp-server.ts`)
 
 - Uses `@modelcontextprotocol/sdk` with StreamableHTTP transport
-- Registers one tool per CLI command from the command registry
-- Each tool has the same Zod-validated schema: `{ vault?, params?, flags? }`
+- **Code Mode pattern**: Registers exactly 2 tools instead of one-per-command (113+):
+    - `search` — Progressive discovery of commands with optional `query` and `category` filters. Returns matching commands + all categories. Filters out blocked commands.
+    - `execute` — Runs any CLI command by name (colon notation). Supports unknown/discovered commands via pass-through. Accepts `{ command, vault?, params?, flags? }`.
 - Stateless: creates a new transport per request, no persistent connections
 - Applies same validation as REST: blocked commands, dangerous gates, CLI availability
+- Agent discovers command parameters at runtime via `execute({ command: "help", params: { command: "<cmd>" } })`
 
 ### Domain (`src/app/domain/`)
 

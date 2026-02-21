@@ -3,8 +3,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod/v4'
 import {
-    getAllCommands,
-    commandToMcpToolName,
+    getCommandDefinition,
+    searchCommands,
+    isDangerousPattern,
     INTERNAL_COMMANDS
 } from '../domain/cli-command-registry'
 import { executeCli } from './cli-executor'
@@ -18,8 +19,12 @@ export interface McpServerContext {
 }
 
 /**
- * MCP server wrapper that registers one tool per Obsidian CLI command.
+ * MCP server wrapper using the Code Mode pattern (2 tools: search + execute).
  * Uses WebStandard StreamableHTTP transport on the /mcp path.
+ *
+ * Instead of registering one tool per CLI command (113+), we register exactly
+ * two generic tools that enable progressive discovery. This keeps the MCP tool
+ * count fixed regardless of how many commands exist.
  *
  * We use WebStandardStreamableHTTPServerTransport directly (instead of
  * the Node.js StreamableHTTPServerTransport wrapper) because the
@@ -169,123 +174,218 @@ export class McpServerWrapper {
         res.end()
     }
 
+    /**
+     * Register exactly 2 MCP tools following the Code Mode pattern:
+     * - `search`: Progressive discovery of available commands
+     * - `execute`: Run any Obsidian CLI command
+     *
+     * This keeps the MCP tool count fixed regardless of how many CLI commands exist.
+     */
     private registerTools(): void {
-        const commands = getAllCommands()
+        this.registerSearchTool()
+        this.registerExecuteTool()
+        log('Registered 2 MCP tools (Code Mode pattern)', 'debug')
+    }
 
-        for (const def of commands) {
-            const toolName = commandToMcpToolName(def.command)
+    private registerSearchTool(): void {
+        this.mcpServer.registerTool(
+            'search',
+            {
+                title: 'Search commands',
+                description: [
+                    'Discover available Obsidian CLI commands.',
+                    'Call with no arguments to get an overview of all commands and categories.',
+                    'Use "category" to filter by category (e.g., "daily", "files", "search").',
+                    'Use "query" to find commands by name or description (case-insensitive substring match).',
+                    'Both filters can be combined.',
+                    '',
+                    'Typical workflow:',
+                    '1. search() — overview of categories',
+                    '2. search(category: "daily") — commands in a category',
+                    '3. execute(command: "help", params: { command: "daily:append" }) — parameter details',
+                    '4. execute(command: "daily:append", params: { content: "Hello" }) — run it'
+                ].join('\n'),
+                inputSchema: z.object({
+                    query: z
+                        .string()
+                        .optional()
+                        .describe(
+                            'Search term to match against command names and descriptions (case-insensitive)'
+                        ),
+                    category: z
+                        .string()
+                        .optional()
+                        .describe(
+                            'Filter by exact category name (e.g., "daily", "files", "search")'
+                        )
+                })
+            },
+            (args) => {
+                const result = searchCommands({
+                    query: args.query,
+                    category: args.category
+                })
 
-            this.mcpServer.registerTool(
-                toolName,
-                {
-                    title: def.command,
-                    description: `[${def.category}] ${def.description}`,
-                    inputSchema: z.object({
-                        vault: z.string().optional().describe('Target vault name'),
-                        params: z
-                            .record(z.string(), z.string())
-                            .optional()
-                            .describe('Key-value parameters for the CLI command'),
-                        flags: z
-                            .array(z.string())
-                            .optional()
-                            .describe('Boolean flags for the CLI command')
-                    })
-                },
-                async (args) => {
-                    // Check if command is blocked
-                    if (this.context.settings.blockedCommands.includes(def.command)) {
-                        return {
-                            content: [
-                                {
-                                    type: 'text' as const,
-                                    text: JSON.stringify({
-                                        ok: false,
-                                        error: `Command is blocked: ${def.command}`
-                                    })
-                                }
-                            ],
-                            isError: true
+                // Filter out blocked commands from results
+                const filteredCommands = result.commands.filter(
+                    (cmd) => !this.context.settings.blockedCommands.includes(cmd.command)
+                )
+
+                const response = {
+                    commands: filteredCommands.map((cmd) => ({
+                        command: cmd.command,
+                        category: cmd.category,
+                        description: cmd.description,
+                        dangerous: cmd.dangerous
+                    })),
+                    total: filteredCommands.length,
+                    categories: result.categories
+                }
+
+                return {
+                    content: [
+                        {
+                            type: 'text' as const,
+                            text: JSON.stringify(response)
                         }
-                    }
+                    ],
+                    isError: false
+                }
+            }
+        )
+    }
 
-                    // Check dangerous command
-                    if (def.dangerous && !this.context.settings.allowDangerousCommands) {
-                        return {
-                            content: [
-                                {
-                                    type: 'text' as const,
-                                    text: JSON.stringify({
-                                        ok: false,
-                                        error: `Dangerous command requires allowDangerousCommands setting: ${def.command}`
-                                    })
-                                }
-                            ],
-                            isError: true
-                        }
-                    }
+    private registerExecuteTool(): void {
+        this.mcpServer.registerTool(
+            'execute',
+            {
+                title: 'Execute command',
+                description: [
+                    'Execute an Obsidian CLI command.',
+                    'Commands use colon notation (e.g., "daily:append", "property:set").',
+                    'Use the "search" tool first to discover available commands.',
+                    '',
+                    'Examples:',
+                    '  execute(command: "version") — Obsidian version',
+                    '  execute(command: "read", params: { file: "notes/todo.md" }) — read a file',
+                    '  execute(command: "daily:append", params: { content: "New entry" }) — append to daily note',
+                    '  execute(command: "search", params: { query: "meeting" }) — search vault',
+                    '  execute(command: "help", params: { command: "append" }) — get help for a command'
+                ].join('\n'),
+                inputSchema: z.object({
+                    command: z
+                        .string()
+                        .describe(
+                            'CLI command to execute (e.g., "daily:append", "read", "search")'
+                        ),
+                    vault: z.string().optional().describe('Target vault name'),
+                    params: z
+                        .record(z.string(), z.string())
+                        .optional()
+                        .describe('Key-value parameters for the CLI command'),
+                    flags: z
+                        .array(z.string())
+                        .optional()
+                        .describe('Boolean flags for the CLI command')
+                })
+            },
+            async (args) => {
+                const command = args.command
 
-                    // Handle internal commands (no CLI binary needed)
-                    if (INTERNAL_COMMANDS.has(def.command)) {
-                        return this.handleInternalCommand(def.command)
-                    }
-
-                    // Check CLI availability
-                    if (!this.context.cliStatus.available) {
-                        return {
-                            content: [
-                                {
-                                    type: 'text' as const,
-                                    text: JSON.stringify({
-                                        ok: false,
-                                        error:
-                                            'Obsidian CLI is not available: ' +
-                                            this.context.cliStatus.error
-                                    })
-                                }
-                            ],
-                            isError: true
-                        }
-                    }
-
-                    const vault = args.vault ?? this.context.settings.defaultVault ?? ''
-                    const params = args.params ?? {}
-                    const flags = args.flags ?? []
-
-                    log(`MCP tool call: ${def.command}`, 'debug')
-
-                    const result = await executeCli({
-                        command: def.command,
-                        params,
-                        flags,
-                        vault,
-                        binaryPath: this.context.cliStatus.binaryPath,
-                        timeout: this.context.settings.requestTimeout
-                    })
-
-                    const response = {
-                        ok: result.exitCode === 0,
-                        command: def.command,
-                        exitCode: result.exitCode,
-                        stdout: result.stdout,
-                        stderr: result.stderr,
-                        duration: result.duration
-                    }
-
+                // Check if command is blocked
+                if (this.context.settings.blockedCommands.includes(command)) {
                     return {
                         content: [
                             {
                                 type: 'text' as const,
-                                text: JSON.stringify(response)
+                                text: JSON.stringify({
+                                    ok: false,
+                                    error: `Command is blocked: ${command}`
+                                })
                             }
                         ],
-                        isError: result.exitCode !== 0
+                        isError: true
                     }
                 }
-            )
-        }
 
-        log(`Registered ${commands.length} MCP tools`, 'debug')
+                // Look up command definition (may be undefined for unknown/discovered commands)
+                const def = getCommandDefinition(command)
+                const isDangerous = def ? def.dangerous : isDangerousPattern(command)
+
+                // Check dangerous command
+                if (isDangerous && !this.context.settings.allowDangerousCommands) {
+                    return {
+                        content: [
+                            {
+                                type: 'text' as const,
+                                text: JSON.stringify({
+                                    ok: false,
+                                    error: `Dangerous command requires allowDangerousCommands setting: ${command}`
+                                })
+                            }
+                        ],
+                        isError: true
+                    }
+                }
+
+                // Handle internal commands (no CLI binary needed)
+                if (INTERNAL_COMMANDS.has(command)) {
+                    return this.handleInternalCommand(command)
+                }
+
+                // Check CLI availability
+                if (!this.context.cliStatus.available) {
+                    return {
+                        content: [
+                            {
+                                type: 'text' as const,
+                                text: JSON.stringify({
+                                    ok: false,
+                                    error:
+                                        'Obsidian CLI is not available: ' +
+                                        this.context.cliStatus.error
+                                })
+                            }
+                        ],
+                        isError: true
+                    }
+                }
+
+                const vault = args.vault ?? this.context.settings.defaultVault ?? ''
+                const params = args.params ?? {}
+                const flags = args.flags ?? []
+
+                log(`MCP tool call: ${command}`, 'debug')
+
+                const result = await executeCli({
+                    command,
+                    params,
+                    flags,
+                    vault,
+                    binaryPath: this.context.cliStatus.binaryPath,
+                    timeout: this.context.settings.requestTimeout
+                })
+
+                const response = {
+                    ok: result.exitCode === 0,
+                    command,
+                    exitCode: result.exitCode,
+                    stdout: result.stdout,
+                    stderr: result.stderr,
+                    duration: result.duration
+                }
+
+                return {
+                    content: [
+                        {
+                            type: 'text' as const,
+                            text: JSON.stringify(response)
+                        }
+                    ],
+                    isError: result.exitCode !== 0
+                }
+            }
+        )
     }
 
     private handleInternalCommand(command: string): {
@@ -300,6 +400,9 @@ export class McpServerWrapper {
                 break
             case 'cli-rest:mcp-url':
                 stdout = `http://${this.context.settings.bindAddress}:${this.context.settings.port}/mcp`
+                break
+            case 'cli-rest:docs-url':
+                stdout = `http://${this.context.settings.bindAddress}:${this.context.settings.port}/api/v1/docs`
                 break
             default:
                 return {

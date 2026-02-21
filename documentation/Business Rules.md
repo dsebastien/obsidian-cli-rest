@@ -58,6 +58,13 @@ When a new business rule is mentioned:
 - They work even when the CLI binary is unavailable.
 - They appear in `/api/v1/commands` and as MCP tools like any other command.
 
+## MCP Code Mode Pattern
+
+- The MCP server registers exactly 2 generic tools (`search` and `execute`), not one tool per CLI command. This keeps the MCP tool count fixed regardless of how many commands exist.
+- The `search` tool enables progressive discovery via query and category filters. It always returns the full list of available categories.
+- The `execute` tool accepts any command string (including unknown/discovered commands). It applies the same validation as the REST API (blocked, dangerous, CLI availability).
+- The REST API is unaffected by this pattern — it continues to serve per-command endpoints.
+
 ## OpenAPI Documentation
 
 - The OpenAPI 3.1.0 spec is generated dynamically from the command registry at request time, so it always includes runtime-discovered commands.

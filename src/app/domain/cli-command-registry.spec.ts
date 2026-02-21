@@ -8,6 +8,7 @@ import {
     commandToMcpToolName,
     mcpToolNameToCommand,
     getCategories,
+    searchCommands,
     mergeDiscoveredCommands,
     resetDiscoveredCommands,
     isDangerousPattern
@@ -301,6 +302,83 @@ describe('resetDiscoveredCommands', () => {
 
         expect(getCommandDefinition('temp:command')).toBeUndefined()
         expect(getAllCommands().length).toBe(CLI_COMMAND_REGISTRY.length)
+    })
+})
+
+describe('searchCommands', () => {
+    test('returns all commands and categories with no filters', () => {
+        const result = searchCommands({})
+        expect(result.commands.length).toBe(getAllCommands().length)
+        expect(result.categories.length).toBeGreaterThan(0)
+    })
+
+    test('filters by category', () => {
+        const result = searchCommands({ category: 'daily' })
+        expect(result.commands.length).toBeGreaterThan(0)
+        for (const cmd of result.commands) {
+            expect(cmd.category).toBe('daily')
+        }
+    })
+
+    test('returns empty array for unknown category', () => {
+        const result = searchCommands({ category: 'nonexistent' })
+        expect(result.commands.length).toBe(0)
+    })
+
+    test('filters by query against command name', () => {
+        const result = searchCommands({ query: 'append' })
+        expect(result.commands.length).toBeGreaterThan(0)
+        for (const cmd of result.commands) {
+            const matchesCommand = cmd.command.toLowerCase().includes('append')
+            const matchesDescription = cmd.description.toLowerCase().includes('append')
+            expect(matchesCommand || matchesDescription).toBe(true)
+        }
+    })
+
+    test('filters by query against description', () => {
+        const result = searchCommands({ query: 'vault' })
+        expect(result.commands.length).toBeGreaterThan(0)
+    })
+
+    test('query is case-insensitive', () => {
+        const lower = searchCommands({ query: 'append' })
+        const upper = searchCommands({ query: 'APPEND' })
+        expect(lower.commands.length).toBe(upper.commands.length)
+    })
+
+    test('combines query and category with AND logic', () => {
+        const result = searchCommands({ query: 'append', category: 'daily' })
+        expect(result.commands.length).toBeGreaterThan(0)
+        for (const cmd of result.commands) {
+            expect(cmd.category).toBe('daily')
+            const matchesCommand = cmd.command.toLowerCase().includes('append')
+            const matchesDescription = cmd.description.toLowerCase().includes('append')
+            expect(matchesCommand || matchesDescription).toBe(true)
+        }
+    })
+
+    test('always returns categories regardless of filters', () => {
+        const result = searchCommands({ category: 'daily' })
+        expect(result.categories).toContain('general')
+        expect(result.categories).toContain('files')
+        expect(result.categories).toContain('daily')
+    })
+
+    test('includes discovered commands', () => {
+        mergeDiscoveredCommands([
+            {
+                command: 'custom:tool',
+                httpMethod: 'POST',
+                category: 'discovered',
+                dangerous: false,
+                description: 'A custom tool'
+            }
+        ])
+
+        const result = searchCommands({ query: 'custom:tool' })
+        expect(result.commands.length).toBe(1)
+        expect(result.commands[0]!.command).toBe('custom:tool')
+        expect(result.categories).toContain('discovered')
     })
 })
 

@@ -1005,3 +1005,34 @@ export function getCategories(): string[] {
     }
     return [...categories]
 }
+
+/**
+ * Search commands with optional filters for progressive discovery (MCP Code Mode pattern).
+ *
+ * - No args: returns all commands + all categories (overview mode)
+ * - `query`: case-insensitive substring match against command name and description
+ * - `category`: exact match filter on category
+ * - Both filters combine with AND logic
+ * - Always returns the full list of available categories for further discovery
+ */
+export function searchCommands(options: { query?: string; category?: string }): {
+    commands: readonly CliCommandDefinition[]
+    categories: string[]
+} {
+    const categories = getCategories()
+    let commands: readonly CliCommandDefinition[] = getAllCommands()
+
+    if (options.category) {
+        commands = commands.filter((cmd) => cmd.category === options.category)
+    }
+
+    if (options.query) {
+        const q = options.query.toLowerCase()
+        commands = commands.filter(
+            (cmd) =>
+                cmd.command.toLowerCase().includes(q) || cmd.description.toLowerCase().includes(q)
+        )
+    }
+
+    return { commands, categories }
+}

@@ -91,7 +91,10 @@ CLI colons become slashes in URLs: `property:set` becomes `/api/v1/cli/property/
 
 ### MCP server
 
-An MCP endpoint at `/mcp` for AI assistant integration. Each CLI command is registered as an MCP tool (e.g., `property_set`, `daily_append`).
+An MCP endpoint at `/mcp` for AI assistant integration. Uses the **Code Mode pattern** — just 2 tools (`search` and `execute`) enable progressive discovery of all commands, keeping the tool count fixed regardless of how many CLI commands exist.
+
+- `search` — Discover commands by name, description, or category
+- `execute` — Run any CLI command by name
 
 Configure your MCP client with:
 

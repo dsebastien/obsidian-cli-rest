@@ -145,7 +145,7 @@ Authorization: Bearer <api-key>
 Content-Type: application/json
 ```
 
-StreamableHTTP transport for the Model Context Protocol. This endpoint is used by MCP-compatible AI clients. See [MCP integration](mcp-integration.md) for setup details.
+StreamableHTTP transport for the Model Context Protocol. Exposes 2 tools (`search` and `execute`) using the Code Mode pattern for progressive command discovery. See [MCP integration](mcp-integration.md) for setup details.
 
 ## URL mapping
 

@@ -65,13 +65,25 @@ At startup, `obsidian help` is run to discover all available commands. Discovere
 
 ### Name conversions
 
-| Context  | Format               | Example        |
-| -------- | -------------------- | -------------- |
-| CLI      | Colon-separated      | `property:set` |
-| REST URL | Slash-separated      | `property/set` |
-| MCP tool | Underscore-separated | `property_set` |
+| Context  | Format          | Example        |
+| -------- | --------------- | -------------- |
+| CLI      | Colon-separated | `property:set` |
+| REST URL | Slash-separated | `property/set` |
+| MCP      | Colon notation  | `property:set` |
 
-Conversion functions: `commandToUrlPath()`, `urlPathToCommand()`, `commandToMcpToolName()`, `mcpToolNameToCommand()`.
+The MCP `execute` tool accepts command names in their original colon notation (e.g., `property:set`). The REST API uses slash-separated URL paths.
+
+Conversion functions: `commandToUrlPath()`, `urlPathToCommand()`. The MCP name conversion functions (`commandToMcpToolName()`, `mcpToolNameToCommand()`) are retained for compatibility but no longer used by the MCP server (which uses the Code Mode pattern with 2 generic tools instead of per-command tools).
+
+### Search and discovery
+
+`searchCommands()` supports progressive discovery for the MCP Code Mode pattern:
+
+- No args: returns all commands + all categories (overview mode)
+- `query`: case-insensitive substring match against command name and description
+- `category`: exact match filter on category
+- Both filters combine with AND logic
+- Always returns the full list of available categories
 
 ## Dangerous commands
 

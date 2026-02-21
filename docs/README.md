@@ -5,7 +5,7 @@ Obsidian CLI REST exposes all Obsidian CLI commands as a local HTTP API and MCP 
 ## Key features
 
 - **REST API** — All CLI commands available at `/api/v1/cli/*` via standard HTTP
-- **MCP server** — Same commands exposed as MCP tools at `/mcp` for AI assistants
+- **MCP server** — 2-tool Code Mode interface at `/mcp` for AI assistants (search + execute)
 - **API key authentication** — Auto-generated Bearer token for secure access
 - **Safety controls** — Dangerous command gating, per-command blocklist
 - **Configurable** — Port, bind address, CORS, timeouts, independent REST/MCP toggles
