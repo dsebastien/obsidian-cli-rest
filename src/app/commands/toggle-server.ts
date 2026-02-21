@@ -73,3 +73,18 @@ export function registerCopyMcpUrlCommand(plugin: ObsidianCliRestPlugin): void {
         }
     })
 }
+
+/**
+ * Register the copy API docs URL command.
+ */
+export function registerCopyDocsUrlCommand(plugin: ObsidianCliRestPlugin): void {
+    plugin.addCommand({
+        id: 'copy-docs-url',
+        name: 'Copy API docs URL to clipboard',
+        callback: () => {
+            const url = `http://${plugin.settings.bindAddress}:${plugin.settings.port}/api/v1/docs`
+            void navigator.clipboard.writeText(url)
+            new Notice(`API docs URL copied: ${url}`)
+        }
+    })
+}

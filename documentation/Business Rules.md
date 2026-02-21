@@ -35,7 +35,7 @@ When a new business rule is mentioned:
 ## Interfaces
 
 - REST API and MCP server are independently toggleable via settings.
-- Health check (`/api/v1/health`) and command list (`/api/v1/commands`) are always available (no auth required) when server is running.
+- Health check (`/api/v1/health`), command list (`/api/v1/commands`), OpenAPI spec (`/api/v1/openapi.json`), and API docs (`/api/v1/docs`) are always available (no auth required) when server is running.
 - All CLI command endpoints require API key authentication when a key is configured.
 
 ## Dynamic CLI Command Discovery
@@ -49,11 +49,17 @@ When a new business rule is mentioned:
 
 ## Command Palette Commands
 
-- The plugin always registers four command palette commands: toggle server, copy API key, copy REST API URL, copy MCP server URL.
+- The plugin always registers five command palette commands: toggle server, copy API key, copy REST API URL, copy MCP server URL, copy API docs URL.
 
 ## Internal Commands
 
-- `cli-rest:rest-url` and `cli-rest:mcp-url` are internal commands handled by the plugin (not proxied to the CLI binary).
-- They return the REST API base URL and MCP server URL respectively, based on current settings.
+- `cli-rest:rest-url`, `cli-rest:mcp-url`, and `cli-rest:docs-url` are internal commands handled by the plugin (not proxied to the CLI binary).
+- They return the REST API base URL, MCP server URL, and API docs URL respectively, based on current settings.
 - They work even when the CLI binary is unavailable.
 - They appear in `/api/v1/commands` and as MCP tools like any other command.
+
+## OpenAPI Documentation
+
+- The OpenAPI 3.1.0 spec is generated dynamically from the command registry at request time, so it always includes runtime-discovered commands.
+- API docs (`/api/v1/docs`) and OpenAPI spec (`/api/v1/openapi.json`) are public endpoints (no auth required).
+- The docs UI uses Scalar API Reference loaded from CDN. This is acceptable because the HTML page is served to external HTTP clients (browsers), not loaded by Obsidian itself.

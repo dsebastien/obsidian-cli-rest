@@ -18,6 +18,17 @@ export interface CliExecutionOptions {
 }
 
 /**
+ * Strip Obsidian startup noise from CLI output.
+ * The CLI prepends lines like:
+ *   "2026-02-21 11:44:14 Loading updated app package /home/.../.config/obsidian/obsidian-1.12.2.asar"
+ */
+const CLI_NOISE_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} Loading updated app package .+\n?/gm
+
+function stripCliNoise(output: string): string {
+    return output.replace(CLI_NOISE_PATTERN, '')
+}
+
+/**
  * Execute an Obsidian CLI command via child_process.execFile.
  * Uses execFile (not exec) to prevent shell injection.
  */
@@ -61,8 +72,8 @@ export function executeCli(options: CliExecutionOptions): Promise<CliExecutionRe
                 }
 
                 resolve({
-                    stdout: stdout ?? '',
-                    stderr: stderr ?? '',
+                    stdout: stripCliNoise(stdout ?? ''),
+                    stderr: stripCliNoise(stderr ?? ''),
                     exitCode,
                     duration
                 })

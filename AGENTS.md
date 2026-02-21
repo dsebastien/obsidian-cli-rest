@@ -385,6 +385,7 @@ const button = container.createEl('button', {
 - Provide defaults and validation in settings.
 - Write idempotent code paths so reload/unload doesn't leak listeners or intervals.
 - Use `this.register*` helpers for everything that needs cleanup.
+- Keep the OpenAPI spec up to date when adding, removing, or modifying API endpoints, request/response schemas, or CLI commands. The spec is generated dynamically from the command registry (`openapi-generator.ts`), but changes to the response format, query parameters, authentication, or new endpoint types require updating the generator.
 
 **Don't**
 

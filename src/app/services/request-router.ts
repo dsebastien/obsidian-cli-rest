@@ -3,7 +3,7 @@ import { URL } from 'node:url'
 import type { CliAvailabilityResult } from './cli-availability-checker'
 import { executeCli } from './cli-executor'
 import { parseJsonBody, parseQueryString } from './request-parser'
-import { sendError, sendSuccess } from './response-builder'
+import { sendError, sendSuccess, sendJson, sendHtml } from './response-builder'
 import {
     getCommandDefinition,
     getAllCommands,
@@ -11,6 +11,7 @@ import {
     isDangerousPattern,
     INTERNAL_COMMANDS
 } from '../domain/cli-command-registry'
+import { generateOpenApiSpec, generateDocsHtml } from './openapi-generator'
 import type { CliCommandDefinition } from '../domain/cli-command'
 import type { PluginSettings } from '../types/plugin-settings.intf'
 
@@ -84,6 +85,22 @@ export async function routeRequest(
             },
             ctx.settings.enableCors
         )
+        return true
+    }
+
+    // OpenAPI spec (JSON)
+    if (pathname === `${API_PREFIX}/openapi.json`) {
+        const baseUrl = `http://${ctx.settings.bindAddress}:${ctx.settings.port}`
+        const spec = generateOpenApiSpec(baseUrl)
+        sendJson(res, 200, spec, ctx.settings.enableCors)
+        return true
+    }
+
+    // API docs (Scalar UI)
+    if (pathname === `${API_PREFIX}/docs`) {
+        const specUrl = `http://${ctx.settings.bindAddress}:${ctx.settings.port}${API_PREFIX}/openapi.json`
+        const html = generateDocsHtml(specUrl)
+        sendHtml(res, html, ctx.settings.enableCors)
         return true
     }
 
@@ -256,6 +273,9 @@ function handleInternalCommand(res: ServerResponse, command: string, ctx: Router
             break
         case 'cli-rest:mcp-url':
             stdout = `http://${ctx.settings.bindAddress}:${ctx.settings.port}/mcp`
+            break
+        case 'cli-rest:docs-url':
+            stdout = `http://${ctx.settings.bindAddress}:${ctx.settings.port}/api/v1/docs`
             break
         default:
             sendError(res, 500, `Unknown internal command: ${command}`, ctx.settings.enableCors)

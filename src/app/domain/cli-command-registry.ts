@@ -799,6 +799,13 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         dangerous: false,
         description: 'Get the MCP server URL'
     },
+    {
+        command: 'cli-rest:docs-url',
+        httpMethod: 'GET',
+        category: 'internal',
+        dangerous: false,
+        description: 'Get the API documentation URL'
+    },
 
     // ── Developer ────────────────────────────────────────────────────
     {
@@ -876,7 +883,11 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
 /**
  * Commands handled internally by the plugin (not proxied to CLI binary).
  */
-export const INTERNAL_COMMANDS = new Set(['cli-rest:rest-url', 'cli-rest:mcp-url'])
+export const INTERNAL_COMMANDS = new Set([
+    'cli-rest:rest-url',
+    'cli-rest:mcp-url',
+    'cli-rest:docs-url'
+])
 
 // ── Static command map (built once from the registry) ──────────────────────
 const staticCommandMap = new Map<string, CliCommandDefinition>()

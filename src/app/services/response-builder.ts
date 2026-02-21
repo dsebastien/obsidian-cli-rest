@@ -30,7 +30,7 @@ export function sendError(
 /**
  * Send a JSON response with the given status code.
  */
-function sendJson(
+export function sendJson(
     res: ServerResponse,
     statusCode: number,
     body: unknown,
@@ -39,6 +39,15 @@ function sendJson(
     setCorsHeaders(res, enableCors)
     res.writeHead(statusCode, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(body))
+}
+
+/**
+ * Send an HTML response.
+ */
+export function sendHtml(res: ServerResponse, html: string, enableCors: boolean): void {
+    setCorsHeaders(res, enableCors)
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    res.end(html)
 }
 
 /**

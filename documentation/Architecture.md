@@ -16,11 +16,13 @@ HTTP Request
   → HTTP Server (http-server.ts)
     → CORS preflight check (if CORS enabled)
     → Route by URL prefix:
-      /api/v1/health     → Health handler (no auth) → JSON response
-      /api/v1/commands   → Commands handler (no auth) → JSON response
-      /api/v1/cli/*      → Auth middleware → Request Router → CLI Executor → Response Builder
-      /mcp               → Auth middleware → MCP Transport → Tool Handler → CLI Executor
-      *                  → 404 Not Found
+      /api/v1/health       → Health handler (no auth) → JSON response
+      /api/v1/commands     → Commands handler (no auth) → JSON response
+      /api/v1/openapi.json → OpenAPI spec (no auth) → JSON response
+      /api/v1/docs         → Scalar API docs UI (no auth) → HTML response
+      /api/v1/cli/*        → Auth middleware → Request Router → CLI Executor → Response Builder
+      /mcp                 → Auth middleware → MCP Transport → Tool Handler → CLI Executor
+      *                    → 404 Not Found
 ```
 
 ## Component diagram
@@ -75,9 +77,10 @@ HTTP Request
 
 - **http-server.ts**: `node:http` server wrapper. Routes requests by URL prefix to REST handlers or MCP handler. Handles CORS preflight when enabled.
 - **auth-middleware.ts**: Validates `Authorization: Bearer <key>` header. Skips validation if API key is empty.
-- **request-router.ts**: Maps URL paths to CLI commands. Handles health check, command list, and CLI command dispatch. Validates HTTP methods and checks command permissions (blocked, dangerous). Supports pass-through for unknown commands via POST with safe defaults.
+- **request-router.ts**: Maps URL paths to CLI commands. Handles health check, command list, OpenAPI spec, docs UI, and CLI command dispatch. Validates HTTP methods and checks command permissions (blocked, dangerous). Supports pass-through for unknown commands via POST with safe defaults.
 - **request-parser.ts**: Parses GET query parameters and POST/DELETE JSON bodies into a normalized format (`vault`, `params`, `flags`).
-- **response-builder.ts**: Builds JSON envelope responses. Adds CORS headers when enabled. Maps results to appropriate HTTP status codes.
+- **response-builder.ts**: Builds JSON envelope responses and HTML responses. Adds CORS headers when enabled. Maps results to appropriate HTTP status codes.
+- **openapi-generator.ts**: Dynamically generates an OpenAPI 3.1.0 specification from the command registry (static + discovered). Also generates the Scalar API Reference HTML page. The spec includes all paths, schemas, security schemes, and tags by category.
 
 ### MCP layer (`src/app/services/mcp-server.ts`)
 
@@ -159,6 +162,7 @@ src/
     └── services/
         ├── http-server.ts               # HTTP server wrapper
         ├── mcp-server.ts                # MCP server wrapper
+        ├── openapi-generator.ts         # Dynamic OpenAPI 3.1 spec + Scalar docs HTML
         ├── auth-middleware.ts           # Bearer token validation
         ├── auth-middleware.spec.ts
         ├── cli-availability-checker.ts  # CLI binary discovery
@@ -171,7 +175,7 @@ src/
         ├── request-parser.spec.ts
         ├── request-router.ts            # URL-to-command routing
         ├── request-router.spec.ts
-        ├── response-builder.ts          # JSON response construction
+        ├── response-builder.ts          # JSON/HTML response construction
         └── response-builder.spec.ts
 ```
 

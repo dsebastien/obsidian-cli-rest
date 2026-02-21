@@ -21,7 +21,8 @@ import {
     registerToggleServerCommand,
     registerCopyApiKeyCommand,
     registerCopyRestUrlCommand,
-    registerCopyMcpUrlCommand
+    registerCopyMcpUrlCommand,
+    registerCopyDocsUrlCommand
 } from './commands/toggle-server'
 
 /**
@@ -78,6 +79,7 @@ export class ObsidianCliRestPlugin extends Plugin {
         registerCopyApiKeyCommand(this)
         registerCopyRestUrlCommand(this)
         registerCopyMcpUrlCommand(this)
+        registerCopyDocsUrlCommand(this)
 
         // Add settings tab
         this.addSettingTab(new ObsidianCliRestSettingTab(this.app, this))

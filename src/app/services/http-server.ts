@@ -156,9 +156,12 @@ export class HttpServerWrapper {
 
             // REST API endpoints: /api/v1/*
             if (url.startsWith('/api/v1/')) {
-                // Health and commands endpoints skip auth
+                // Health, commands, docs, and openapi.json endpoints skip auth
                 const isPublicEndpoint =
-                    url.startsWith('/api/v1/health') || url.startsWith('/api/v1/commands')
+                    url.startsWith('/api/v1/health') ||
+                    url.startsWith('/api/v1/commands') ||
+                    url.startsWith('/api/v1/docs') ||
+                    url.startsWith('/api/v1/openapi.json')
 
                 if (!isPublicEndpoint) {
                     if (!validateAuth(req, this.options.apiKey)) {
