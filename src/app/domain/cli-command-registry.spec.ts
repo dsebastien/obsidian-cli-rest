@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import {
     CLI_COMMAND_REGISTRY,
     getCommandDefinition,
@@ -7,8 +7,15 @@ import {
     urlPathToCommand,
     commandToMcpToolName,
     mcpToolNameToCommand,
-    getCategories
+    getCategories,
+    mergeDiscoveredCommands,
+    resetDiscoveredCommands,
+    isDangerousPattern
 } from './cli-command-registry'
+
+afterEach(() => {
+    resetDiscoveredCommands()
+})
 
 describe('CLI_COMMAND_REGISTRY', () => {
     test('contains at least 100 commands', () => {
@@ -55,7 +62,8 @@ describe('CLI_COMMAND_REGISTRY', () => {
             'bookmarks',
             'bases',
             'commands',
-            'hotkeys'
+            'hotkeys',
+            'internal'
         ]
         for (const cat of expected) {
             expect(categories).toContain(cat)
@@ -204,5 +212,118 @@ describe('getCategories', () => {
         const categories = getCategories()
         const unique = new Set(categories)
         expect(unique.size).toBe(categories.length)
+    })
+})
+
+describe('mergeDiscoveredCommands', () => {
+    test('adds new commands to registry', () => {
+        mergeDiscoveredCommands([
+            {
+                command: 'new:command',
+                httpMethod: 'POST',
+                category: 'discovered',
+                dangerous: false,
+                description: 'A newly discovered command'
+            }
+        ])
+
+        const def = getCommandDefinition('new:command')
+        expect(def).toBeDefined()
+        expect(def!.command).toBe('new:command')
+        expect(def!.category).toBe('discovered')
+    })
+
+    test('static entries take precedence over discovered', () => {
+        mergeDiscoveredCommands([
+            {
+                command: 'version',
+                httpMethod: 'POST',
+                category: 'discovered',
+                dangerous: true,
+                description: 'Overridden version'
+            }
+        ])
+
+        const def = getCommandDefinition('version')
+        expect(def).toBeDefined()
+        // Static metadata should win
+        expect(def!.httpMethod).toBe('GET')
+        expect(def!.dangerous).toBe(false)
+        expect(def!.category).toBe('general')
+    })
+
+    test('getAllCommands includes discovered commands', () => {
+        const originalCount = getAllCommands().length
+
+        mergeDiscoveredCommands([
+            {
+                command: 'new:command',
+                httpMethod: 'POST',
+                category: 'discovered',
+                dangerous: false,
+                description: 'A newly discovered command'
+            }
+        ])
+
+        expect(getAllCommands().length).toBe(originalCount + 1)
+    })
+
+    test('getCategories includes discovered category', () => {
+        mergeDiscoveredCommands([
+            {
+                command: 'new:command',
+                httpMethod: 'POST',
+                category: 'discovered',
+                dangerous: false,
+                description: 'A newly discovered command'
+            }
+        ])
+
+        expect(getCategories()).toContain('discovered')
+    })
+})
+
+describe('resetDiscoveredCommands', () => {
+    test('clears discovered commands', () => {
+        mergeDiscoveredCommands([
+            {
+                command: 'temp:command',
+                httpMethod: 'POST',
+                category: 'discovered',
+                dangerous: false,
+                description: 'Temporary'
+            }
+        ])
+
+        expect(getCommandDefinition('temp:command')).toBeDefined()
+
+        resetDiscoveredCommands()
+
+        expect(getCommandDefinition('temp:command')).toBeUndefined()
+        expect(getAllCommands().length).toBe(CLI_COMMAND_REGISTRY.length)
+    })
+})
+
+describe('isDangerousPattern', () => {
+    test('matches dev: prefix', () => {
+        expect(isDangerousPattern('dev:anything')).toBe(true)
+        expect(isDangerousPattern('dev:new-tool')).toBe(true)
+    })
+
+    test('matches exact dangerous commands', () => {
+        expect(isDangerousPattern('eval')).toBe(true)
+        expect(isDangerousPattern('restart')).toBe(true)
+        expect(isDangerousPattern('reload')).toBe(true)
+        expect(isDangerousPattern('devtools')).toBe(true)
+        expect(isDangerousPattern('command')).toBe(true)
+        expect(isDangerousPattern('plugins:restrict')).toBe(true)
+    })
+
+    test('does not match safe commands', () => {
+        expect(isDangerousPattern('version')).toBe(false)
+        expect(isDangerousPattern('files')).toBe(false)
+        expect(isDangerousPattern('search')).toBe(false)
+        expect(isDangerousPattern('plugin:enable')).toBe(false)
+        expect(isDangerousPattern('developer')).toBe(false)
     })
 })

@@ -47,11 +47,21 @@ JSON envelope returned by REST endpoints (`src/app/domain/api-response.ts`):
 
 HTTP method type (`src/app/domain/http-method.ts`): `'GET' | 'POST' | 'DELETE'`
 
+### DiscoveredCommand
+
+A command discovered from `obsidian help` output (`src/app/services/cli-command-discovery.ts`):
+
+- `command`: CLI command name (e.g., `new:feature`)
+- `description`: Human-readable description from help output
+- `section`: `'commands'` | `'developer'` — which section of help output it appeared in
+
 ## Command registry
 
-All CLI commands across categories: general, vault, files, outline, search, links, tags, tasks, properties, daily, random, wordcount, templates, bookmarks, bases, commands, hotkeys, workspace, web, plugins, themes, snippets, history, sync, publish, developer.
+Static registry of all CLI commands plus dynamically discovered commands. Categories: general, vault, files, outline, search, links, tags, tasks, properties, daily, random, wordcount, templates, bookmarks, bases, commands, hotkeys, workspace, web, plugins, themes, snippets, history, sync, publish, developer, discovered.
 
 See `src/app/domain/cli-command-registry.ts` for the complete registry.
+
+At startup, `obsidian help` is run to discover all available commands. Discovered commands are merged with the static registry — static entries always take precedence. New commands get `httpMethod: POST`, `category: 'discovered'` (or `'developer'` if in Developer section), and `dangerous: true` if matching dangerous patterns.
 
 ### Name conversions
 

@@ -61,20 +61,21 @@ HTTP Request
 ### Plugin lifecycle (`src/app/plugin.ts`)
 
 - `ObsidianCliRestPlugin` extends Obsidian's `Plugin`
-- **onload**: Check CLI availability, generate API key (if missing), register commands, add settings tab, optionally auto-start server
+- **onload**: Check CLI availability, discover CLI commands (if CLI available), generate API key (if missing), register commands, add settings tab, optionally auto-start server
 - **onunload**: Stop server and clean up resources
 - Status bar shows server state: address:port when running, "off" when stopped
 
 ### CLI layer (`src/app/services/`)
 
 - **cli-availability-checker.ts**: Finds the `obsidian` binary by searching PATH, `/usr/local/bin`, `/usr/bin`
+- **cli-command-discovery.ts**: Runs `obsidian help` at startup to discover available CLI commands. Parses the output and returns `DiscoveredCommand[]`. Graceful fallback on failure (returns empty array).
 - **cli-executor.ts**: Runs CLI commands via `child_process.execFile` (prevents shell injection). Supports configurable timeout and 10 MB output buffer.
 
 ### HTTP layer (`src/app/services/`)
 
 - **http-server.ts**: `node:http` server wrapper. Routes requests by URL prefix to REST handlers or MCP handler. Handles CORS preflight when enabled.
 - **auth-middleware.ts**: Validates `Authorization: Bearer <key>` header. Skips validation if API key is empty.
-- **request-router.ts**: Maps URL paths to CLI commands. Handles health check, command list, and CLI command dispatch. Validates HTTP methods and checks command permissions (blocked, dangerous).
+- **request-router.ts**: Maps URL paths to CLI commands. Handles health check, command list, and CLI command dispatch. Validates HTTP methods and checks command permissions (blocked, dangerous). Supports pass-through for unknown commands via POST with safe defaults.
 - **request-parser.ts**: Parses GET query parameters and POST/DELETE JSON bodies into a normalized format (`vault`, `params`, `flags`).
 - **response-builder.ts**: Builds JSON envelope responses. Adds CORS headers when enabled. Maps results to appropriate HTTP status codes.
 
@@ -88,7 +89,7 @@ HTTP Request
 
 ### Domain (`src/app/domain/`)
 
-- **cli-command-registry.ts**: Static registry of all CLI commands with metadata. Provides lookup, URL/MCP name conversion, and category listing.
+- **cli-command-registry.ts**: Static registry of all CLI commands with metadata, plus runtime merge of dynamically discovered commands. Provides lookup, URL/MCP name conversion, category listing, dangerous pattern detection, and merge/reset functions for discovered commands. Static entries always take precedence.
 - **cli-command.ts**: `CliCommandDefinition` interface
 - **api-response.ts**: `ApiSuccessResponse` and `ApiErrorResponse` types
 - **http-method.ts**: `HttpMethod` type (`'GET' | 'POST' | 'DELETE'`)
@@ -148,7 +149,7 @@ src/
     ├── settings/
     │   └── settings-tab.ts              # Settings UI
     ├── commands/
-    │   └── toggle-server.ts             # Toggle server command
+    │   └── toggle-server.ts             # Toggle server, copy API key/URLs commands
     ├── domain/
     │   ├── cli-command.ts               # CliCommandDefinition interface
     │   ├── cli-command-registry.ts      # All CLI command definitions
@@ -162,6 +163,8 @@ src/
         ├── auth-middleware.spec.ts
         ├── cli-availability-checker.ts  # CLI binary discovery
         ├── cli-availability-checker.spec.ts
+        ├── cli-command-discovery.ts     # Dynamic CLI command discovery
+        ├── cli-command-discovery.spec.ts
         ├── cli-executor.ts              # CLI command execution
         ├── cli-executor.spec.ts
         ├── request-parser.ts            # Request body/query parsing

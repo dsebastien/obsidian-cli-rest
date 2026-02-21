@@ -2,7 +2,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod/v4'
-import { getAllCommands, commandToMcpToolName } from '../domain/cli-command-registry'
+import {
+    getAllCommands,
+    commandToMcpToolName,
+    INTERNAL_COMMANDS
+} from '../domain/cli-command-registry'
 import { executeCli } from './cli-executor'
 import type { CliAvailabilityResult } from './cli-availability-checker'
 import type { PluginSettings } from '../types/plugin-settings.intf'
@@ -221,6 +225,11 @@ export class McpServerWrapper {
                         }
                     }
 
+                    // Handle internal commands (no CLI binary needed)
+                    if (INTERNAL_COMMANDS.has(def.command)) {
+                        return this.handleInternalCommand(def.command)
+                    }
+
                     // Check CLI availability
                     if (!this.context.cliStatus.available) {
                         return {
@@ -277,5 +286,51 @@ export class McpServerWrapper {
         }
 
         log(`Registered ${commands.length} MCP tools`, 'debug')
+    }
+
+    private handleInternalCommand(command: string): {
+        content: Array<{ type: 'text'; text: string }>
+        isError: boolean
+    } {
+        let stdout: string
+
+        switch (command) {
+            case 'cli-rest:rest-url':
+                stdout = `http://${this.context.settings.bindAddress}:${this.context.settings.port}/api/v1`
+                break
+            case 'cli-rest:mcp-url':
+                stdout = `http://${this.context.settings.bindAddress}:${this.context.settings.port}/mcp`
+                break
+            default:
+                return {
+                    content: [
+                        {
+                            type: 'text' as const,
+                            text: JSON.stringify({
+                                ok: false,
+                                error: `Unknown internal command: ${command}`
+                            })
+                        }
+                    ],
+                    isError: true
+                }
+        }
+
+        return {
+            content: [
+                {
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        ok: true,
+                        command,
+                        exitCode: 0,
+                        stdout,
+                        stderr: '',
+                        duration: 0
+                    })
+                }
+            ],
+            isError: false
+        }
     }
 }

@@ -784,6 +784,22 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         description: 'Open file on published site (defaults to active file)'
     },
 
+    // ── Internal (handled by plugin, not proxied to CLI) ─────────────
+    {
+        command: 'cli-rest:rest-url',
+        httpMethod: 'GET',
+        category: 'internal',
+        dangerous: false,
+        description: 'Get the REST API base URL'
+    },
+    {
+        command: 'cli-rest:mcp-url',
+        httpMethod: 'GET',
+        category: 'internal',
+        dangerous: false,
+        description: 'Get the MCP server URL'
+    },
+
     // ── Developer ────────────────────────────────────────────────────
     {
         command: 'devtools',
@@ -857,23 +873,82 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
     }
 ] as const
 
-const commandMap = new Map<string, CliCommandDefinition>()
+/**
+ * Commands handled internally by the plugin (not proxied to CLI binary).
+ */
+export const INTERNAL_COMMANDS = new Set(['cli-rest:rest-url', 'cli-rest:mcp-url'])
+
+// ── Static command map (built once from the registry) ──────────────────────
+const staticCommandMap = new Map<string, CliCommandDefinition>()
 for (const def of CLI_COMMAND_REGISTRY) {
-    commandMap.set(def.command, def)
+    staticCommandMap.set(def.command, def)
+}
+
+// ── Runtime discovered commands ────────────────────────────────────────────
+let discoveredCommands: CliCommandDefinition[] = []
+let fullCommandMap = new Map<string, CliCommandDefinition>(staticCommandMap)
+
+/**
+ * Patterns that indicate a dangerous command.
+ * Matches business rules: dev:*, eval, restart, reload, devtools, command, plugins:restrict
+ */
+const DANGEROUS_PATTERNS = [
+    /^dev:/,
+    /^eval$/,
+    /^restart$/,
+    /^reload$/,
+    /^devtools$/,
+    /^command$/,
+    /^plugins:restrict$/
+]
+
+/**
+ * Check if a command name matches known dangerous patterns.
+ */
+export function isDangerousPattern(command: string): boolean {
+    return DANGEROUS_PATTERNS.some((pattern) => pattern.test(command))
+}
+
+/**
+ * Merge dynamically discovered commands into the runtime registry.
+ * Static entries always take precedence (curated metadata wins).
+ */
+export function mergeDiscoveredCommands(commands: CliCommandDefinition[]): void {
+    discoveredCommands = commands.filter((cmd) => !staticCommandMap.has(cmd.command))
+    rebuildFullMap()
+}
+
+/**
+ * Clear all discovered commands (for test cleanup).
+ */
+export function resetDiscoveredCommands(): void {
+    discoveredCommands = []
+    rebuildFullMap()
+}
+
+function rebuildFullMap(): void {
+    fullCommandMap = new Map<string, CliCommandDefinition>(staticCommandMap)
+    for (const cmd of discoveredCommands) {
+        fullCommandMap.set(cmd.command, cmd)
+    }
 }
 
 /**
  * Look up a CLI command definition by its command name.
+ * Checks both static and discovered commands.
  */
 export function getCommandDefinition(command: string): CliCommandDefinition | undefined {
-    return commandMap.get(command)
+    return fullCommandMap.get(command)
 }
 
 /**
- * Get all CLI command definitions.
+ * Get all CLI command definitions (static + discovered).
  */
 export function getAllCommands(): readonly CliCommandDefinition[] {
-    return CLI_COMMAND_REGISTRY
+    if (discoveredCommands.length === 0) {
+        return CLI_COMMAND_REGISTRY
+    }
+    return [...CLI_COMMAND_REGISTRY, ...discoveredCommands]
 }
 
 /**
@@ -910,11 +985,11 @@ export function mcpToolNameToCommand(toolName: string): string {
 }
 
 /**
- * Get all unique categories from the registry.
+ * Get all unique categories from the registry (static + discovered).
  */
 export function getCategories(): string[] {
     const categories = new Set<string>()
-    for (const def of CLI_COMMAND_REGISTRY) {
+    for (const def of getAllCommands()) {
         categories.add(def.category)
     }
     return [...categories]

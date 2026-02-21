@@ -7,8 +7,11 @@ import { sendError, sendSuccess } from './response-builder'
 import {
     getCommandDefinition,
     getAllCommands,
-    urlPathToCommand
+    urlPathToCommand,
+    isDangerousPattern,
+    INTERNAL_COMMANDS
 } from '../domain/cli-command-registry'
+import type { CliCommandDefinition } from '../domain/cli-command'
 import type { PluginSettings } from '../types/plugin-settings.intf'
 
 const API_PREFIX = '/api/v1'
@@ -107,10 +110,26 @@ async function handleCliCommand(
     command: string,
     ctx: RouterContext
 ): Promise<boolean> {
-    const def = getCommandDefinition(command)
+    let def: CliCommandDefinition | undefined = getCommandDefinition(command)
+
     if (!def) {
-        sendError(res, 404, `Unknown command: ${command}`, ctx.settings.enableCors)
-        return true
+        // Pass-through: allow unknown commands via POST only with safe defaults
+        if (method !== 'POST') {
+            sendError(
+                res,
+                405,
+                `Method ${method} not allowed for unregistered command: ${command}. Only POST is accepted`,
+                ctx.settings.enableCors
+            )
+            return true
+        }
+        def = {
+            command,
+            httpMethod: 'POST',
+            category: 'discovered',
+            dangerous: isDangerousPattern(command),
+            description: `Unregistered CLI command: ${command}`
+        }
     }
 
     // Check HTTP method (POST is always allowed as universal fallback)
@@ -139,6 +158,11 @@ async function handleCliCommand(
             ctx.settings.enableCors
         )
         return true
+    }
+
+    // Handle internal commands (no CLI binary needed)
+    if (INTERNAL_COMMANDS.has(command)) {
+        return handleInternalCommand(res, command, ctx)
     }
 
     // Check CLI availability
@@ -220,5 +244,34 @@ async function handleCliCommand(
         )
     }
 
+    return true
+}
+
+function handleInternalCommand(res: ServerResponse, command: string, ctx: RouterContext): boolean {
+    let stdout: string
+
+    switch (command) {
+        case 'cli-rest:rest-url':
+            stdout = `http://${ctx.settings.bindAddress}:${ctx.settings.port}/api/v1`
+            break
+        case 'cli-rest:mcp-url':
+            stdout = `http://${ctx.settings.bindAddress}:${ctx.settings.port}/mcp`
+            break
+        default:
+            sendError(res, 500, `Unknown internal command: ${command}`, ctx.settings.enableCors)
+            return true
+    }
+
+    sendSuccess(
+        res,
+        {
+            command,
+            exitCode: 0,
+            stdout,
+            stderr: '',
+            duration: 0
+        },
+        ctx.settings.enableCors
+    )
     return true
 }

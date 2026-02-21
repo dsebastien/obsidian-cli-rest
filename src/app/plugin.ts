@@ -8,9 +8,21 @@ import type { Draft } from 'immer'
 import { generateApiKey } from '../utils/crypto'
 import { checkCliAvailability } from './services/cli-availability-checker'
 import type { CliAvailabilityResult } from './services/cli-availability-checker'
+import { discoverCliCommands } from './services/cli-command-discovery'
+import {
+    CLI_COMMAND_REGISTRY,
+    isDangerousPattern,
+    mergeDiscoveredCommands
+} from './domain/cli-command-registry'
+import type { CliCommandDefinition } from './domain/cli-command'
 import { HttpServerWrapper } from './services/http-server'
 import { McpServerWrapper } from './services/mcp-server'
-import { registerToggleServerCommand, registerCopyApiKeyCommand } from './commands/toggle-server'
+import {
+    registerToggleServerCommand,
+    registerCopyApiKeyCommand,
+    registerCopyRestUrlCommand,
+    registerCopyMcpUrlCommand
+} from './commands/toggle-server'
 
 /**
  * Module-level reference to the active HTTP server.
@@ -19,6 +31,9 @@ import { registerToggleServerCommand, registerCopyApiKeyCommand } from './comman
  * even when onunload() can't be awaited.
  */
 let sharedHttpServer: HttpServerWrapper | null = null
+
+/** Pre-computed set of static registry command names for quick lookup during discovery. */
+const CLI_COMMAND_REGISTRY_NAMES = new Set(CLI_COMMAND_REGISTRY.map((c) => c.command))
 
 export class ObsidianCliRestPlugin extends Plugin {
     settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
@@ -45,6 +60,11 @@ export class ObsidianCliRestPlugin extends Plugin {
             )
         }
 
+        // Discover CLI commands dynamically
+        if (this.cliStatus.available) {
+            await this.discoverCommands()
+        }
+
         // Auto-generate API key on first enable if empty
         if (!this.settings.apiKey) {
             this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
@@ -56,6 +76,8 @@ export class ObsidianCliRestPlugin extends Plugin {
         // Register commands
         registerToggleServerCommand(this)
         registerCopyApiKeyCommand(this)
+        registerCopyRestUrlCommand(this)
+        registerCopyMcpUrlCommand(this)
 
         // Add settings tab
         this.addSettingTab(new ObsidianCliRestSettingTab(this.app, this))
@@ -183,6 +205,9 @@ export class ObsidianCliRestPlugin extends Plugin {
 
     async recheckCli(): Promise<void> {
         this.cliStatus = await checkCliAvailability()
+        if (this.cliStatus.available) {
+            await this.discoverCommands()
+        }
         if (this.httpServer) {
             this.httpServer.updateContext({
                 settings: this.settings,
@@ -194,6 +219,38 @@ export class ObsidianCliRestPlugin extends Plugin {
                 settings: this.settings,
                 cliStatus: this.cliStatus
             })
+        }
+    }
+
+    /**
+     * Discover available CLI commands by running `obsidian help` and
+     * merge them into the command registry. Static entries always
+     * take precedence over discovered ones.
+     */
+    private async discoverCommands(): Promise<void> {
+        try {
+            const discovered = await discoverCliCommands(this.cliStatus.binaryPath)
+            const definitions: CliCommandDefinition[] = discovered.map((cmd) => ({
+                command: cmd.command,
+                httpMethod: 'POST',
+                category: cmd.section === 'developer' ? 'developer' : 'discovered',
+                dangerous: cmd.section === 'developer' || isDangerousPattern(cmd.command),
+                description: cmd.description
+            }))
+            mergeDiscoveredCommands(definitions)
+            const newCount = definitions.filter(
+                (d) => !CLI_COMMAND_REGISTRY_NAMES.has(d.command)
+            ).length
+            if (newCount > 0) {
+                log(`Discovered ${newCount} new CLI commands not in static registry`, 'info')
+            }
+            log(
+                `CLI command discovery complete: ${discovered.length} total commands found`,
+                'debug'
+            )
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            log(`CLI command discovery failed: ${msg}`, 'warn')
         }
     }
 

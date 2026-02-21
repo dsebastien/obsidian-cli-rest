@@ -37,3 +37,23 @@ When a new business rule is mentioned:
 - REST API and MCP server are independently toggleable via settings.
 - Health check (`/api/v1/health`) and command list (`/api/v1/commands`) are always available (no auth required) when server is running.
 - All CLI command endpoints require API key authentication when a key is configured.
+
+## Dynamic CLI Command Discovery
+
+- At startup (when CLI is available), the plugin runs `obsidian help` to discover all available commands.
+- Discovered commands are merged with the static registry. Static entries always take precedence (curated metadata wins).
+- Newly discovered commands default to: `httpMethod: POST`, `dangerous: true` if in Developer section or matching dangerous patterns, `category: 'discovered'` (or `'developer'`).
+- The REST router supports pass-through for completely unknown commands (not in static or discovered registry) via POST only. Other HTTP methods return 405.
+- Pass-through commands use the same safe defaults and undergo all standard checks (blocked, dangerous, CLI availability).
+- Discovery failure is non-fatal — the plugin falls back to the static registry only.
+
+## Command Palette Commands
+
+- The plugin always registers four command palette commands: toggle server, copy API key, copy REST API URL, copy MCP server URL.
+
+## Internal Commands
+
+- `cli-rest:rest-url` and `cli-rest:mcp-url` are internal commands handled by the plugin (not proxied to the CLI binary).
+- They return the REST API base URL and MCP server URL respectively, based on current settings.
+- They work even when the CLI binary is unavailable.
+- They appear in `/api/v1/commands` and as MCP tools like any other command.

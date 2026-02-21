@@ -1,7 +1,12 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { routeRequest } from './request-router'
 import type { RouterContext } from './request-router'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { resetDiscoveredCommands } from '../domain/cli-command-registry'
+
+afterEach(() => {
+    resetDiscoveredCommands()
+})
 
 function createMockReq(
     method: string,
@@ -135,12 +140,22 @@ describe('routeRequest', () => {
         expect(getStatusCode()).toBe(404)
     })
 
-    test('returns 404 for unknown CLI command', async () => {
+    test('returns 405 for unknown CLI command via GET (pass-through requires POST)', async () => {
         const req = createMockReq('GET', '/api/v1/cli/nonexistent')
         const { res, getStatusCode } = createMockRes()
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
-        expect(getStatusCode()).toBe(404)
+        expect(getStatusCode()).toBe(405)
+    })
+
+    test('passes through unknown CLI command via POST', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/nonexistent', {}, '{}')
+        const { res, getStatusCode } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        // Should proceed to CLI execution (not 404 or 405)
+        expect(getStatusCode()).not.toBe(404)
+        expect(getStatusCode()).not.toBe(405)
     })
 
     test('returns 405 for wrong HTTP method', async () => {
@@ -315,5 +330,134 @@ describe('routeRequest', () => {
         expect(getStatusCode()).toBe(200)
         const body = JSON.parse(getBody())
         expect(body.command).toBe('property:set')
+    })
+
+    // ── Pass-through behavior ──────────────────────────────────────────────
+    test('pass-through: unknown command via POST proceeds to execution', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/future/command', {}, '{}')
+        const { res, getStatusCode } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        // Should not be 404 or 405 — proceeds to CLI execution
+        expect(getStatusCode()).not.toBe(404)
+        expect(getStatusCode()).not.toBe(405)
+    })
+
+    test('pass-through: unknown command via DELETE returns 405', async () => {
+        const req = createMockReq('DELETE', '/api/v1/cli/future/command')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(405)
+        const body = JSON.parse(getBody())
+        expect(body.error).toContain('Only POST is accepted')
+    })
+
+    test('pass-through: unknown dangerous pattern requires allowDangerousCommands', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/dev/newfeature', {}, '{}')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(403)
+        const body = JSON.parse(getBody())
+        expect(body.error).toContain('allowDangerousCommands')
+    })
+
+    test('pass-through: unknown dangerous command allowed with allowDangerousCommands', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/dev/newfeature', {}, '{}')
+        const { res, getStatusCode } = createMockRes()
+        const ctx = createContext({
+            settings: { ...createContext().settings, allowDangerousCommands: true }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).not.toBe(403)
+        expect(getStatusCode()).not.toBe(404)
+    })
+
+    test('pass-through: unknown command respects blocked list', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/future/command', {}, '{}')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const ctx = createContext({
+            settings: { ...createContext().settings, blockedCommands: ['future:command'] }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(403)
+        const body = JSON.parse(getBody())
+        expect(body.error).toContain('blocked')
+    })
+
+    test('pass-through: returns 503 when CLI is unavailable', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/future/command', {}, '{}')
+        const { res, getStatusCode } = createMockRes()
+        const ctx = createContext({
+            cliStatus: {
+                available: false,
+                binaryPath: '',
+                version: '',
+                error: 'Not found'
+            }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(503)
+    })
+
+    // ── Internal commands ───────────────────────────────────────────────
+    test('cli-rest:rest-url returns REST API URL', async () => {
+        const req = createMockReq('GET', '/api/v1/cli/cli-rest/rest-url')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(200)
+        const body = JSON.parse(getBody())
+        expect(body.ok).toBe(true)
+        expect(body.command).toBe('cli-rest:rest-url')
+        expect(body.stdout).toBe('http://127.0.0.1:27124/api/v1')
+    })
+
+    test('cli-rest:mcp-url returns MCP server URL', async () => {
+        const req = createMockReq('GET', '/api/v1/cli/cli-rest/mcp-url')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(200)
+        const body = JSON.parse(getBody())
+        expect(body.ok).toBe(true)
+        expect(body.command).toBe('cli-rest:mcp-url')
+        expect(body.stdout).toBe('http://127.0.0.1:27124/mcp')
+    })
+
+    test('internal commands work even when CLI is unavailable', async () => {
+        const req = createMockReq('GET', '/api/v1/cli/cli-rest/rest-url')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const ctx = createContext({
+            cliStatus: {
+                available: false,
+                binaryPath: '',
+                version: '',
+                error: 'Not found'
+            }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(200)
+        const body = JSON.parse(getBody())
+        expect(body.ok).toBe(true)
+        expect(body.stdout).toBe('http://127.0.0.1:27124/api/v1')
+    })
+
+    test('internal commands reflect custom bind address and port', async () => {
+        const req = createMockReq('GET', '/api/v1/cli/cli-rest/mcp-url')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const ctx = createContext({
+            settings: { ...createContext().settings, bindAddress: '0.0.0.0', port: 8080 }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(200)
+        const body = JSON.parse(getBody())
+        expect(body.stdout).toBe('http://0.0.0.0:8080/mcp')
     })
 })
