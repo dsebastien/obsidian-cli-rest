@@ -1,20 +1,65 @@
-# Release notes
+# Release Notes
 
-## 0.1.0
-
-Initial release.
+## 0.1.0 (2026-02-21)
 
 ### Features
 
-- REST API exposing all Obsidian CLI commands at `/api/v1/cli/*`
-- MCP server at `/mcp` with StreamableHTTP transport for AI assistant integration
-- API key authentication with auto-generation
-- Dangerous command gating (14 commands require explicit opt-in)
-- Per-command blocklist
-- CORS support
-- Health check and command listing endpoints (no auth required)
-- Settings tab with status, server, interfaces, security, command filtering, and advanced sections
-- Status bar indicator showing server address or off state
-- Toggle server and copy API key commands
-- Auto-start on plugin load
-- Default vault setting for multi-vault setups
+- **all:** improved api docs
+- **all:** improved command discovery
+- **all:** initial implementation of the RESTful API and MCP server
+- **all:** updated
+- **all:** updated docs
+
+## 2.3.0 (2026-02-11)
+
+### Features
+
+- **all:** added docs template
+- **all:** added Obsidian skills (including obsidian cli)
+- **all:** updated scripts
+
+## 2.2.0 (2026-01-30)
+
+### Features
+
+- **all:** updated scripts
+
+## 2.0.4 (2026-01-04)
+
+### Bug Fixes
+
+- **all:** use console.debug instead of console.log
+
+## 2.0.3 (2025-12-16)
+
+### Bug Fixes
+
+- **all:** adapt the build.ts to be generic
+
+## 2.0.2 (2025-12-12)
+
+### Bug Fixes
+
+- **all:** fix image url
+
+## 2.0.1 (2025-12-12)
+
+### Bug Fixes
+
+- **all:** fied the release workflow to name the tags correctly
+
+## 2.0.0 (2025-12-11)
+
+## 1.6.0 (2024-10-27)
+
+## 1.5.0 (2024-05-14)
+
+## 1.4.0 (2024-05-14)
+
+## 1.3.0 (2024-05-14)
+
+## 1.2.0 (2024-05-14)
+
+## 1.1.0 (2024-05-13)
+
+## 1.0.0 (2024-04-26)
