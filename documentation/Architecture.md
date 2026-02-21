@@ -49,7 +49,7 @@ HTTP Request
 │  └─ Response builder  │  └─ JSON tool results            │
 ├──────────────────────┴──────────────────────────────────┤
 │ Shared                                                  │
-│  ├─ CLI Command Registry (110+ definitions)             │
+│  ├─ CLI Command Registry (all CLI commands)              │
 │  ├─ CLI Availability Checker                            │
 │  ├─ CLI Executor (child_process.execFile)               │
 │  └─ Settings (Zod schema, Immer state)                  │
@@ -81,7 +81,7 @@ HTTP Request
 ### MCP layer (`src/app/services/mcp-server.ts`)
 
 - Uses `@modelcontextprotocol/sdk` with StreamableHTTP transport
-- Registers one tool per CLI command (110+ tools) from the command registry
+- Registers one tool per CLI command from the command registry
 - Each tool has the same Zod-validated schema: `{ vault?, params?, flags? }`
 - Stateless: creates a new transport per request, no persistent connections
 - Applies same validation as REST: blocked commands, dangerous gates, CLI availability
@@ -95,7 +95,7 @@ HTTP Request
 
 ### Settings (`src/app/types/plugin-settings.intf.ts`)
 
-- Zod-validated schema with 12 settings
+- Zod-validated schema with 11 settings
 - `DEFAULT_SETTINGS` derived from Zod defaults
 - Immer-based immutable state management in the plugin
 
@@ -114,6 +114,22 @@ HTTP Request
 - **Per-command blocklist**: Configurable via settings
 - **Shell injection prevention**: `execFile` (not `exec`) prevents argument expansion
 - **No telemetry**: All processing is local, no data leaves the machine
+
+## Test vault
+
+The `test-vault/` directory is an Obsidian vault used for development and manual testing. It has the Obsidian CLI enabled and is registered as a known vault.
+
+- **Purpose**: Manual testing of CLI commands, REST API, and MCP server during development
+- **Dev build auto-copy**: `bun run dev` automatically copies built plugin artifacts (`main.js`, `manifest.json`, `styles.css`) to `test-vault/.obsidian/plugins/obsidian-cli-rest/`
+- **Core plugins**: Key core plugins (daily-notes, templates, bookmarks, sync, workspaces, webviewer, etc.) should be enabled for full command coverage
+- **Test data**: Contains sample notes, folders, tags, and tasks for exercising CLI commands
+- **Build artifacts are git-ignored**: `test-vault/.obsidian/plugins/` is excluded from version control
+
+To test a CLI command against the test vault:
+
+```bash
+obsidian vault=test-vault <command> [options]
+```
 
 ## Directory structure
 
@@ -135,7 +151,7 @@ src/
     │   └── toggle-server.ts             # Toggle server command
     ├── domain/
     │   ├── cli-command.ts               # CliCommandDefinition interface
-    │   ├── cli-command-registry.ts      # 110+ command definitions
+    │   ├── cli-command-registry.ts      # All CLI command definitions
     │   ├── cli-command-registry.spec.ts
     │   ├── api-response.ts              # API response types
     │   └── http-method.ts               # HTTP method type

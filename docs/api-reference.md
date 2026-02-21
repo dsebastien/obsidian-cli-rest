@@ -21,7 +21,7 @@ Response example:
     "ok": true,
     "command": "health",
     "exitCode": 0,
-    "stdout": "{\"status\":\"ok\",\"cli\":{\"available\":true,\"version\":\"0.19.0\",\"binaryPath\":\"/usr/local/bin/obsidian\"},\"server\":{\"port\":27124,\"bindAddress\":\"127.0.0.1\",\"restEnabled\":true,\"mcpEnabled\":true}}",
+    "stdout": "{\"status\":\"ok\",\"cli\":{\"available\":true,\"version\":\"1.12.2\",\"binaryPath\":\"/usr/local/bin/obsidian\"},\"server\":{\"port\":27124,\"bindAddress\":\"127.0.0.1\",\"restEnabled\":true,\"mcpEnabled\":true}}",
     "stderr": "",
     "duration": 0
 }

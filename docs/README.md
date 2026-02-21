@@ -1,6 +1,6 @@
 # Obsidian CLI REST — User guide
 
-Obsidian CLI REST exposes all 110+ Obsidian CLI commands as a local HTTP API and MCP server, enabling programmatic control of your vault from scripts, tools, and AI assistants.
+Obsidian CLI REST exposes all Obsidian CLI commands as a local HTTP API and MCP server, enabling programmatic control of your vault from scripts, tools, and AI assistants.
 
 ## Key features
 
@@ -69,7 +69,7 @@ The plugin registers two commands accessible from the command palette:
 - [Usage guide](usage.md) — Detailed usage examples and patterns
 - [API reference](api-reference.md) — Endpoints, request/response formats, status codes
 - [MCP integration](mcp-integration.md) — Connect AI assistants
-- [Command reference](command-reference.md) — All 110+ supported commands
+- [Command reference](command-reference.md) — All supported commands
 - [Configuration](configuration.md) — All settings explained
 - [Tips and troubleshooting](tips.md) — Common issues and solutions
 

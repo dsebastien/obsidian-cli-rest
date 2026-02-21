@@ -32,6 +32,9 @@ styles.css
 # Obsidian
 data.json
 
+# Test vault build artifacts (copied by dev build)
+test-vault/.obsidian/plugins/
+
 # System Files
 .DS_Store
 .AppleDouble

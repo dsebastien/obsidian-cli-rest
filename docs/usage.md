@@ -250,4 +250,4 @@ Returns CLI availability, version, binary path, and server configuration.
 curl http://127.0.0.1:27124/api/v1/commands
 ```
 
-Returns all 110+ commands with their category, HTTP method, danger level, and description.
+Returns all commands with their category, HTTP method, danger level, and description.

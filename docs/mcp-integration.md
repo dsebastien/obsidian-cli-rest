@@ -1,6 +1,6 @@
 # MCP integration
 
-The plugin includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI assistants interact with your Obsidian vault. All 110+ CLI commands are registered as MCP tools.
+The plugin includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI assistants interact with your Obsidian vault. All CLI commands are registered as MCP tools.
 
 ## How it works
 

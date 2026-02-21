@@ -6,7 +6,7 @@
 
 Zod-validated settings schema. See `src/app/types/plugin-settings.intf.ts`.
 
-12 fields: `enabled`, `autoStart`, `port`, `bindAddress`, `apiKey`, `requestTimeout`, `enableRestApi`, `enableMcp`, `allowDangerousCommands`, `blockedCommands`, `enableCors`, `defaultVault`.
+11 fields: `autoStart`, `port`, `bindAddress`, `apiKey`, `requestTimeout`, `enableRestApi`, `enableMcp`, `allowDangerousCommands`, `blockedCommands`, `enableCors`, `defaultVault`.
 
 ### CliCommandDefinition
 
@@ -49,7 +49,7 @@ HTTP method type (`src/app/domain/http-method.ts`): `'GET' | 'POST' | 'DELETE'`
 
 ## Command registry
 
-110+ commands across categories: general, vault, files, outline, search, links, tags, tasks, properties, daily, random, unique, wordcount, templates, bookmarks, bases, commands, hotkeys, workspace, web, plugins, themes, snippets, history, sync, publish, developer.
+All CLI commands across categories: general, vault, files, outline, search, links, tags, tasks, properties, daily, random, wordcount, templates, bookmarks, bases, commands, hotkeys, workspace, web, plugins, themes, snippets, history, sync, publish, developer.
 
 See `src/app/domain/cli-command-registry.ts` for the complete registry.
 

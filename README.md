@@ -1,6 +1,6 @@
 # Obsidian CLI REST
 
-Control your Obsidian vault programmatically. This plugin turns all **110+ Obsidian CLI commands** into a local HTTP API and MCP server, letting you automate your workflow from scripts, tools, and AI assistants.
+Control your Obsidian vault programmatically. This plugin turns **all Obsidian CLI commands** into a local HTTP API and MCP server, letting you automate your workflow from scripts, tools, and AI assistants.
 
 ## Why use this plugin?
 
@@ -55,7 +55,7 @@ curl -X POST \
 
 ## What you can do
 
-The plugin exposes 110+ commands organized into categories:
+The plugin exposes all CLI commands organized into categories:
 
 | Category        | Examples                                                  |
 | --------------- | --------------------------------------------------------- |
@@ -133,7 +133,7 @@ All settings are accessible from **Settings > Obsidian CLI REST**.
 - **[User guide](docs/README.md)** — Setup, usage, configuration, and troubleshooting
 - **[API reference](docs/api-reference.md)** — Endpoints, request/response formats, status codes
 - **[MCP integration](docs/mcp-integration.md)** — Setting up AI assistant connections
-- **[Command reference](docs/command-reference.md)** — All 110+ supported commands
+- **[Command reference](docs/command-reference.md)** — All supported commands
 
 ## Support
 

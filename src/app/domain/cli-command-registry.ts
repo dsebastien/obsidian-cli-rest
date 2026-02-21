@@ -57,14 +57,6 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         dangerous: false,
         description: 'List known vaults (desktop only)'
     },
-    {
-        command: 'vault:open',
-        httpMethod: 'POST',
-        category: 'vault',
-        dangerous: false,
-        description: 'Switch to a different vault (TUI only)'
-    },
-
     // ── Files and Folders ────────────────────────────────────────────
     {
         command: 'file',
@@ -340,15 +332,6 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         category: 'random',
         dangerous: false,
         description: 'Read a random note (includes path)'
-    },
-
-    // ── Unique Notes ─────────────────────────────────────────────────
-    {
-        command: 'unique',
-        httpMethod: 'POST',
-        category: 'unique',
-        dangerous: false,
-        description: 'Create unique note'
     },
 
     // ── Wordcount ────────────────────────────────────────────────────

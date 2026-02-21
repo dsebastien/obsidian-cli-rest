@@ -73,6 +73,39 @@ describe('CLI_COMMAND_REGISTRY', () => {
         expect(dangerousCommands).toContain('dev:dom')
     })
 
+    test('dangerous commands match business rules exactly', () => {
+        const dangerousCommands = CLI_COMMAND_REGISTRY.filter((c) => c.dangerous).map(
+            (c) => c.command
+        )
+        // Business rules: eval, restart, devtools, dev:*, command, reload, plugins:restrict
+        const expectedDangerous = [
+            'eval',
+            'restart',
+            'devtools',
+            'command',
+            'reload',
+            'plugins:restrict',
+            'dev:console',
+            'dev:errors',
+            'dev:screenshot',
+            'dev:dom',
+            'dev:css',
+            'dev:mobile',
+            'dev:debug',
+            'dev:cdp'
+        ]
+        expect(dangerousCommands.sort()).toEqual(expectedDangerous.sort())
+    })
+
+    test('non-dangerous commands are not marked dangerous', () => {
+        const safeCommands = ['version', 'help', 'read', 'files', 'search', 'tags', 'vaults']
+        for (const cmd of safeCommands) {
+            const def = getCommandDefinition(cmd)
+            expect(def).toBeDefined()
+            expect(def!.dangerous).toBe(false)
+        }
+    })
+
     test('read-only commands use GET', () => {
         const readCommands = ['read', 'files', 'folders', 'search', 'tags', 'version', 'help']
         for (const cmd of readCommands) {

@@ -1,6 +1,6 @@
 # Command reference
 
-All 110+ Obsidian CLI commands supported by the plugin, organized by category.
+All Obsidian CLI commands supported by the plugin, organized by category.
 
 **Legend:**
 
@@ -18,11 +18,10 @@ All 110+ Obsidian CLI commands supported by the plugin, organized by category.
 
 ## Vault
 
-| Command      | Method | Dangerous | Description                            |
-| ------------ | ------ | --------- | -------------------------------------- |
-| `vault`      | GET    | No        | Show vault info                        |
-| `vaults`     | GET    | No        | List known vaults (desktop only)       |
-| `vault:open` | POST   | No        | Switch to a different vault (TUI only) |
+| Command  | Method | Dangerous | Description                      |
+| -------- | ------ | --------- | -------------------------------- |
+| `vault`  | GET    | No        | Show vault info                  |
+| `vaults` | GET    | No        | List known vaults (desktop only) |
 
 ## Files and folders
 
@@ -105,12 +104,6 @@ All 110+ Obsidian CLI commands supported by the plugin, organized by category.
 | ------------- | ------ | --------- | ---------------------------------- |
 | `random`      | POST   | No        | Open a random note                 |
 | `random:read` | GET    | No        | Read a random note (includes path) |
-
-## Unique notes
-
-| Command  | Method | Dangerous | Description        |
-| -------- | ------ | --------- | ------------------ |
-| `unique` | POST   | No        | Create unique note |
 
 ## Word count
 

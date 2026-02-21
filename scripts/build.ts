@@ -108,17 +108,7 @@ async function copyAssets(): Promise<void> {
     console.log('  ✓ versions.json')
 }
 
-async function copyToVault(): Promise<void> {
-    const vaultPath = process.env['OBSIDIAN_VAULT_LOCATION']
-    if (!vaultPath) {
-        console.log(
-            'Tip: Set OBSIDIAN_VAULT_LOCATION to auto-copy the plugin to your vault after each build.'
-        )
-        return
-    }
-
-    const pluginDir = join(vaultPath, '.obsidian', 'plugins', PLUGIN_ID)
-
+async function copyDistToPluginDir(pluginDir: string): Promise<void> {
     if (!existsSync(pluginDir)) {
         console.log(`Creating plugin directory: ${pluginDir}`)
         mkdirSync(pluginDir, { recursive: true })
@@ -139,11 +129,30 @@ async function copyToVault(): Promise<void> {
     console.log('  ✓ .hotreload')
 }
 
+async function copyToTestVault(): Promise<void> {
+    const testVaultPluginDir = join('test-vault', '.obsidian', 'plugins', PLUGIN_ID)
+    await copyDistToPluginDir(testVaultPluginDir)
+}
+
+async function copyToVault(): Promise<void> {
+    const vaultPath = process.env['OBSIDIAN_VAULT_LOCATION']
+    if (!vaultPath) {
+        console.log(
+            'Tip: Set OBSIDIAN_VAULT_LOCATION to auto-copy the plugin to your vault after each build.'
+        )
+        return
+    }
+
+    const pluginDir = join(vaultPath, '.obsidian', 'plugins', PLUGIN_ID)
+    await copyDistToPluginDir(pluginDir)
+}
+
 async function build(): Promise<void> {
     ensureDistDir()
     await Promise.all([buildJs(), buildStyles(), copyAssets()])
 
     if (!isProd) {
+        await copyToTestVault()
         await copyToVault()
     }
 }

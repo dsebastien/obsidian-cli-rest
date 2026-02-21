@@ -15,6 +15,7 @@ export default tseslint.config(
             '**/dist/**',
             '**/node_modules/**',
             'scripts/**',
+            'test-vault/**',
             '.cz-config.cjs',
             'prettier.config.cjs',
             'package.json'

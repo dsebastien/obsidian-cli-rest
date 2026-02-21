@@ -178,6 +178,100 @@ describe('routeRequest', () => {
         expect(getStatusCode()).toBe(403)
     })
 
+    test('returns 403 with descriptive error for each dangerous command', async () => {
+        const dangerousCommands = [
+            { command: 'eval', path: '/api/v1/cli/eval' },
+            { command: 'restart', path: '/api/v1/cli/restart' },
+            { command: 'reload', path: '/api/v1/cli/reload' },
+            { command: 'devtools', path: '/api/v1/cli/devtools' },
+            { command: 'command', path: '/api/v1/cli/command' },
+            { command: 'plugins:restrict', path: '/api/v1/cli/plugins/restrict' },
+            { command: 'dev:console', path: '/api/v1/cli/dev/console' },
+            { command: 'dev:errors', path: '/api/v1/cli/dev/errors' },
+            { command: 'dev:screenshot', path: '/api/v1/cli/dev/screenshot' },
+            { command: 'dev:dom', path: '/api/v1/cli/dev/dom' },
+            { command: 'dev:css', path: '/api/v1/cli/dev/css' },
+            { command: 'dev:mobile', path: '/api/v1/cli/dev/mobile' },
+            { command: 'dev:debug', path: '/api/v1/cli/dev/debug' },
+            { command: 'dev:cdp', path: '/api/v1/cli/dev/cdp' }
+        ]
+
+        for (const { command, path } of dangerousCommands) {
+            const req = createMockReq('POST', path, {}, '{}')
+            const { res, getStatusCode, getBody } = createMockRes()
+            const handled = await routeRequest(req, res, createContext())
+            expect(handled).toBe(true)
+            expect(getStatusCode()).toBe(403)
+            const body = JSON.parse(getBody())
+            expect(body.ok).toBe(false)
+            expect(body.error).toContain('allowDangerousCommands')
+            expect(body.error).toContain(command)
+        }
+    })
+
+    test('allows dangerous commands when allowDangerousCommands is true', async () => {
+        const dangerousPaths = [
+            '/api/v1/cli/eval',
+            '/api/v1/cli/restart',
+            '/api/v1/cli/reload',
+            '/api/v1/cli/devtools',
+            '/api/v1/cli/command',
+            '/api/v1/cli/plugins/restrict',
+            '/api/v1/cli/dev/console',
+            '/api/v1/cli/dev/dom'
+        ]
+
+        const ctx = createContext({
+            settings: { ...createContext().settings, allowDangerousCommands: true }
+        })
+
+        for (const path of dangerousPaths) {
+            const req = createMockReq('POST', path, {}, '{}')
+            const { res, getStatusCode } = createMockRes()
+            const handled = await routeRequest(req, res, ctx)
+            expect(handled).toBe(true)
+            // Should NOT be 403 - the command proceeds to execution
+            expect(getStatusCode()).not.toBe(403)
+        }
+    })
+
+    test('blocked command takes precedence over allowDangerousCommands', async () => {
+        const req = createMockReq('POST', '/api/v1/cli/eval', {}, '{}')
+        const { res, getStatusCode, getBody } = createMockRes()
+        const ctx = createContext({
+            settings: {
+                ...createContext().settings,
+                allowDangerousCommands: true,
+                blockedCommands: ['eval']
+            }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(403)
+        const body = JSON.parse(getBody())
+        expect(body.error).toContain('blocked')
+    })
+
+    test('non-dangerous commands work regardless of allowDangerousCommands setting', async () => {
+        const req = createMockReq('GET', '/api/v1/cli/version')
+        const { res, getStatusCode } = createMockRes()
+        const ctx = createContext({
+            settings: { ...createContext().settings, allowDangerousCommands: false }
+        })
+        const handled = await routeRequest(req, res, ctx)
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(200)
+    })
+
+    test('dangerous GET commands are also blocked', async () => {
+        // dev:console and dev:errors use GET
+        const req = createMockReq('GET', '/api/v1/cli/dev/console')
+        const { res, getStatusCode } = createMockRes()
+        const handled = await routeRequest(req, res, createContext())
+        expect(handled).toBe(true)
+        expect(getStatusCode()).toBe(403)
+    })
+
     test('returns 503 when CLI is unavailable', async () => {
         const req = createMockReq('GET', '/api/v1/cli/version')
         const { res, getStatusCode } = createMockRes()

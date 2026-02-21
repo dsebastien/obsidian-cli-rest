@@ -1,0 +1,215 @@
+{
+    "main": {
+        "id": "b67422db041b2fb6",
+        "type": "split",
+        "children": [
+            {
+                "id": "5ec8cd381e5c38ce",
+                "type": "tabs",
+                "children": [
+                    {
+                        "id": "e4269c1104d0ee5b",
+                        "type": "leaf",
+                        "state": {
+                            "type": "markdown",
+                            "state": {
+                                "file": "Second Note.md",
+                                "mode": "source",
+                                "source": false
+                            },
+                            "icon": "lucide-file",
+                            "title": "Second Note"
+                        }
+                    },
+                    {
+                        "id": "3bf533dc2d981f97",
+                        "type": "leaf",
+                        "state": {
+                            "type": "webviewer",
+                            "state": {
+                                "url": "https://example.com/",
+                                "title": "Example Domain",
+                                "mode": "webview"
+                            },
+                            "icon": "globe-2",
+                            "title": "Example Domain"
+                        }
+                    }
+                ],
+                "currentTab": 1
+            }
+        ],
+        "direction": "vertical"
+    },
+    "left": {
+        "id": "82d3eefdd6067dc8",
+        "type": "split",
+        "children": [
+            {
+                "id": "6b47de73249c3151",
+                "type": "tabs",
+                "children": [
+                    {
+                        "id": "c2aafde9f13f34fb",
+                        "type": "leaf",
+                        "state": {
+                            "type": "file-explorer",
+                            "state": {
+                                "sortOrder": "alphabetical",
+                                "autoReveal": false
+                            },
+                            "icon": "lucide-folder-closed",
+                            "title": "Files"
+                        }
+                    },
+                    {
+                        "id": "b5719951524d425c",
+                        "type": "leaf",
+                        "state": {
+                            "type": "search",
+                            "state": {
+                                "query": "test",
+                                "matchingCase": false,
+                                "explainSearch": false,
+                                "collapseAll": false,
+                                "extraContext": false,
+                                "sortOrder": "alphabetical"
+                            },
+                            "icon": "lucide-search",
+                            "title": "Search"
+                        }
+                    },
+                    {
+                        "id": "d10a38fa07f10f29",
+                        "type": "leaf",
+                        "state": {
+                            "type": "bookmarks",
+                            "state": {},
+                            "icon": "lucide-bookmark",
+                            "title": "Bookmarks"
+                        }
+                    }
+                ],
+                "currentTab": 1
+            }
+        ],
+        "direction": "horizontal",
+        "width": 300
+    },
+    "right": {
+        "id": "0b9cd83acb42211b",
+        "type": "split",
+        "children": [
+            {
+                "id": "7a1819cd6de3c568",
+                "type": "tabs",
+                "children": [
+                    {
+                        "id": "76da97e8e72fb896",
+                        "type": "leaf",
+                        "state": {
+                            "type": "backlink",
+                            "state": {
+                                "file": "Test Note.md",
+                                "collapseAll": false,
+                                "extraContext": false,
+                                "sortOrder": "alphabetical",
+                                "showSearch": false,
+                                "searchQuery": "",
+                                "backlinkCollapsed": false,
+                                "unlinkedCollapsed": true
+                            },
+                            "icon": "links-coming-in",
+                            "title": "Backlinks for Test Note"
+                        }
+                    },
+                    {
+                        "id": "a877cf9a8283eb68",
+                        "type": "leaf",
+                        "state": {
+                            "type": "outgoing-link",
+                            "state": {
+                                "file": "Test Note.md",
+                                "linksCollapsed": false,
+                                "unlinkedCollapsed": true
+                            },
+                            "icon": "links-going-out",
+                            "title": "Outgoing links from Test Note"
+                        }
+                    },
+                    {
+                        "id": "c320a5517c693edb",
+                        "type": "leaf",
+                        "state": {
+                            "type": "tag",
+                            "state": {
+                                "sortOrder": "frequency",
+                                "useHierarchy": true,
+                                "showSearch": false,
+                                "searchQuery": ""
+                            },
+                            "icon": "lucide-tags",
+                            "title": "Tags"
+                        }
+                    },
+                    {
+                        "id": "ebe36942c68b91cc",
+                        "type": "leaf",
+                        "state": {
+                            "type": "all-properties",
+                            "state": {
+                                "sortOrder": "frequency",
+                                "showSearch": false,
+                                "searchQuery": ""
+                            },
+                            "icon": "lucide-archive",
+                            "title": "All properties"
+                        }
+                    },
+                    {
+                        "id": "200ca9c8b915113a",
+                        "type": "leaf",
+                        "state": {
+                            "type": "outline",
+                            "state": {
+                                "file": "Test Note.md",
+                                "followCursor": false,
+                                "showSearch": false,
+                                "searchQuery": ""
+                            },
+                            "icon": "lucide-list",
+                            "title": "Outline of Test Note"
+                        }
+                    }
+                ]
+            }
+        ],
+        "direction": "horizontal",
+        "width": 300,
+        "collapsed": true
+    },
+    "left-ribbon": {
+        "hiddenItems": {
+            "switcher:Open quick switcher": false,
+            "graph:Open graph view": false,
+            "canvas:Create new canvas": false,
+            "daily-notes:Open today's daily note": false,
+            "templates:Insert template": false,
+            "command-palette:Open command palette": false,
+            "bases:Create new base": false,
+            "random-note:Open random note": false,
+            "workspaces:Manage workspace layouts": false,
+            "publish:Publish changes...": false
+        }
+    },
+    "active": "3bf533dc2d981f97",
+    "lastOpenFiles": [
+        "Test Note.md",
+        "Second Note.md",
+        "2026-02-20.md",
+        "Test Folder/Moved By CLI.md",
+        "Welcome.md",
+        "Test Folder/Nested Note.md",
+        "Test Folder"
+    ]
+}
