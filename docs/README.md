@@ -15,9 +15,9 @@ Obsidian CLI REST exposes all Obsidian CLI commands as a local HTTP API and MCP 
 ### Prerequisites
 
 1. **Obsidian desktop app** (v1.4.0+)
-2. **[Obsidian CLI](https://help.obsidian.md/cli)** installed and in your PATH
+2. **[Obsidian CLI](https://help.obsidian.md/cli)** enabled in Obsidian: **Settings > General > Advanced > Command line interface**
 
-Verify the CLI is installed:
+Verify the CLI is available:
 
 ```bash
 obsidian --version

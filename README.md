@@ -12,7 +12,7 @@ Control your Obsidian vault programmatically. This plugin turns **all Obsidian C
 ## Requirements
 
 - **Obsidian desktop app** (v1.4.0 or later)
-- **[Obsidian CLI](https://help.obsidian.md/cli)** installed and accessible in PATH
+- **[Obsidian CLI](https://help.obsidian.md/cli)** enabled in Obsidian: **Settings > General > Advanced > Command line interface**
 
 ## Installation
 
