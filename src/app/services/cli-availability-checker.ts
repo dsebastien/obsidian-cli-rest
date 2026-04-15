@@ -30,9 +30,15 @@ function tryCandidate(candidate: string): Promise<{ stdout: string; path: string
  * Check if the Obsidian CLI binary is available on the system.
  * Tries multiple candidates: PATH-resolved, /usr/local/bin, /usr/bin.
  *
- * Candidates whose `version` stdout is empty or looks like the Obsidian
- * desktop launcher (e.g. `1.12.7 (installer 1.12.4)`) are rejected — only
- * the standalone CLI is acceptable.
+ * Accepts both the standalone Obsidian CLI (`1.12.2`) and the Obsidian
+ * desktop launcher (`1.12.7 (installer 1.12.4)`). The plugin only ever
+ * runs inside a live Obsidian process, so invoking the desktop launcher
+ * cannot spawn a second instance — Electron's single-instance lock
+ * forwards subsequent `obsidian <cmd>` invocations to the running process
+ * via IPC. Any responder whose stdout starts with a semver is usable.
+ *
+ * Rejected: empty stdout or stdout without a leading `<major>.<minor>` —
+ * that's not a working Obsidian binary at all.
  *
  * The `candidates` parameter is exposed for tests; production callers
  * should pass nothing and let the default candidate list apply.
@@ -43,9 +49,9 @@ export async function checkCliAvailability(
     for (const candidate of candidates) {
         try {
             const result = await tryCandidate(candidate)
-            if (!isCliVersionOutput(result.stdout)) {
+            if (!isVersionOutput(result.stdout)) {
                 log(
-                    `Candidate ${result.path} responded but stdout doesn't look like the Obsidian CLI: ${result.stdout || '<empty>'}`,
+                    `Candidate ${result.path} responded but stdout isn't a recognizable version string: ${result.stdout || '<empty>'}`,
                     'debug'
                 )
                 continue
@@ -73,16 +79,13 @@ export async function checkCliAvailability(
 }
 
 /**
- * Discriminate the standalone Obsidian CLI from the desktop launcher.
- * The CLI prints a bare semver string (e.g. `1.12.2`); the desktop launcher
- * prints something like `1.12.7 (installer 1.12.4)` or nothing at all.
+ * Basic sanity check: stdout must be non-empty and start with a semver
+ * (e.g. `1.12.2` or `1.12.7 (installer 1.12.4)`). Everything else is a
+ * non-Obsidian binary and must be skipped.
  */
-function isCliVersionOutput(stdout: string): boolean {
+function isVersionOutput(stdout: string): boolean {
     const trimmed = stdout.trim()
     if (!trimmed) {
-        return false
-    }
-    if (trimmed.toLowerCase().includes('installer')) {
         return false
     }
     return /^\d+\.\d+(\.\d+)?/.test(trimmed)

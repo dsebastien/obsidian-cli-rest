@@ -1,3 +1,8 @@
+---
+title: API reference
+nav_order: 10
+---
+
 # API reference
 
 Base URL: `http://127.0.0.1:27124` (default)

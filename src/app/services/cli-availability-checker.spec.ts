@@ -63,10 +63,14 @@ describe('checkCliAvailability', () => {
         expect(result.error).toBe('')
     })
 
-    test('rejects the Obsidian desktop launcher (installer string)', async () => {
+    test('accepts the Obsidian desktop launcher (installer string)', async () => {
+        // The plugin only runs inside a live Obsidian process, so invoking
+        // the desktop launcher forwards to the running instance via IPC
+        // rather than spawning a second one. Both binaries are usable.
         const result = await checkCliAvailability([launcherPath])
-        expect(result.available).toBe(false)
-        expect(result.binaryPath).toBe('')
+        expect(result.available).toBe(true)
+        expect(result.binaryPath).toBe(launcherPath)
+        expect(result.version).toBe('1.12.7 (installer 1.12.4)')
     })
 
     test('rejects a candidate that returns empty stdout', async () => {
@@ -76,9 +80,16 @@ describe('checkCliAvailability', () => {
     })
 
     test('falls through bad candidates to a good one', async () => {
-        const result = await checkCliAvailability([missingPath, launcherPath, emptyPath, cliPath])
+        const result = await checkCliAvailability([missingPath, emptyPath, cliPath])
         expect(result.available).toBe(true)
         expect(result.binaryPath).toBe(cliPath)
         expect(result.version).toBe('1.12.2')
+    })
+
+    test('prefers the first responding candidate even when later ones are cleaner', async () => {
+        // First-responder-wins: once we find a usable binary, don't keep probing.
+        const result = await checkCliAvailability([launcherPath, cliPath])
+        expect(result.available).toBe(true)
+        expect(result.binaryPath).toBe(launcherPath)
     })
 })

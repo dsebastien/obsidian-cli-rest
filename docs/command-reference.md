@@ -1,3 +1,8 @@
+---
+title: Command reference
+nav_order: 11
+---
+
 # Command reference
 
 All Obsidian CLI commands supported by the plugin, organized by category.

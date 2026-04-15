@@ -1,3 +1,9 @@
+---
+title: Overview
+nav_order: 1
+permalink: /
+---
+
 # Obsidian CLI REST — User guide
 
 Obsidian CLI REST exposes all Obsidian CLI commands as a local HTTP API and MCP server, enabling programmatic control of your vault from scripts, tools, and AI assistants.
