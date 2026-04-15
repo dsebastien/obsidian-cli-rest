@@ -53,19 +53,6 @@ export class ObsidianCliRestPlugin extends Plugin {
         log('Initializing', 'debug')
         await this.loadSettings()
 
-        // Check CLI availability
-        this.cliStatus = await checkCliAvailability()
-        if (!this.cliStatus.available) {
-            new Notice(
-                'Obsidian CLI REST: CLI binary not found. Install the Obsidian CLI to use this plugin.'
-            )
-        }
-
-        // Discover CLI commands dynamically
-        if (this.cliStatus.available) {
-            await this.discoverCommands()
-        }
-
         // Auto-generate API key on first enable if empty
         if (!this.settings.apiKey) {
             this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
@@ -88,9 +75,50 @@ export class ObsidianCliRestPlugin extends Plugin {
         this.statusBarEl = this.addStatusBarItem()
         this.updateStatusBar()
 
-        // Auto-start server (with retry for port release during reload)
-        if (this.settings.autoStart) {
-            await this.startServerWithRetry()
+        // Defer CLI availability check, command discovery, and auto-start so
+        // we don't block Obsidian's startup on spawning the CLI binary.
+        void this.initializeInBackground()
+    }
+
+    /**
+     * Deferred initialization: probe the Obsidian CLI, discover its commands,
+     * propagate the result to any running server, and auto-start the server
+     * if configured. Runs after onload() returns so Obsidian isn't blocked.
+     */
+    private async initializeInBackground(): Promise<void> {
+        try {
+            this.cliStatus = await checkCliAvailability()
+            if (!this.cliStatus.available) {
+                new Notice(
+                    'Obsidian CLI REST: CLI binary not found. Install the Obsidian CLI to use this plugin.'
+                )
+            } else {
+                await this.discoverCommands()
+            }
+
+            // If the user manually started the server before the probe finished,
+            // refresh its context so requests see the real CLI status.
+            if (this.httpServer) {
+                this.httpServer.updateContext({
+                    settings: this.settings,
+                    cliStatus: this.cliStatus
+                })
+            }
+            if (this.mcpServer) {
+                this.mcpServer.updateContext({
+                    settings: this.settings,
+                    cliStatus: this.cliStatus
+                })
+            }
+
+            if (this.settings.autoStart && !this.isServerRunning()) {
+                await this.startServerWithRetry()
+            }
+
+            this.updateStatusBar()
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            log(`Background initialization failed: ${msg}`, 'error')
         }
     }
 

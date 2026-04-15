@@ -29,11 +29,27 @@ function tryCandidate(candidate: string): Promise<{ stdout: string; path: string
 /**
  * Check if the Obsidian CLI binary is available on the system.
  * Tries multiple candidates: PATH-resolved, /usr/local/bin, /usr/bin.
+ *
+ * Candidates whose `version` stdout is empty or looks like the Obsidian
+ * desktop launcher (e.g. `1.12.7 (installer 1.12.4)`) are rejected — only
+ * the standalone CLI is acceptable.
+ *
+ * The `candidates` parameter is exposed for tests; production callers
+ * should pass nothing and let the default candidate list apply.
  */
-export async function checkCliAvailability(): Promise<CliAvailabilityResult> {
-    for (const candidate of CLI_CANDIDATES) {
+export async function checkCliAvailability(
+    candidates: readonly string[] = CLI_CANDIDATES
+): Promise<CliAvailabilityResult> {
+    for (const candidate of candidates) {
         try {
             const result = await tryCandidate(candidate)
+            if (!isCliVersionOutput(result.stdout)) {
+                log(
+                    `Candidate ${result.path} responded but stdout doesn't look like the Obsidian CLI: ${result.stdout || '<empty>'}`,
+                    'debug'
+                )
+                continue
+            }
             log(`CLI found at ${result.path}: ${result.stdout}`, 'debug')
             return {
                 available: true,
@@ -46,7 +62,7 @@ export async function checkCliAvailability(): Promise<CliAvailabilityResult> {
         }
     }
 
-    const errorMsg = 'Obsidian CLI binary not found. Tried: ' + CLI_CANDIDATES.join(', ')
+    const errorMsg = 'Obsidian CLI binary not found. Tried: ' + candidates.join(', ')
     log(errorMsg, 'warn')
     return {
         available: false,
@@ -54,4 +70,20 @@ export async function checkCliAvailability(): Promise<CliAvailabilityResult> {
         version: '',
         error: errorMsg
     }
+}
+
+/**
+ * Discriminate the standalone Obsidian CLI from the desktop launcher.
+ * The CLI prints a bare semver string (e.g. `1.12.2`); the desktop launcher
+ * prints something like `1.12.7 (installer 1.12.4)` or nothing at all.
+ */
+function isCliVersionOutput(stdout: string): boolean {
+    const trimmed = stdout.trim()
+    if (!trimmed) {
+        return false
+    }
+    if (trimmed.toLowerCase().includes('installer')) {
+        return false
+    }
+    return /^\d+\.\d+(\.\d+)?/.test(trimmed)
 }
