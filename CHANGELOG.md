@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0](https://github.com/dsebastien/obsidian-cli-rest/compare/0.1.0...1.0.0) (2026-04-15)
+
+### Features
+
+* **all:** improved behavior and performance at startup (loading in the background) ([ad8ad05](https://github.com/dsebastien/obsidian-cli-rest/commit/ad8ad051505224c0320da9cc014c2f27f700ba20))
+* **all:** improved MCP and docs ([24b5a85](https://github.com/dsebastien/obsidian-cli-rest/commit/24b5a85ff5cbb910faea646d8419408f2ff6cb6b))
+* **all:** updated ([c66b093](https://github.com/dsebastien/obsidian-cli-rest/commit/c66b093a12528e1fe475558b93133f2d3697a26b))
+
 ## 0.1.0 (2026-02-21)
 
 ### Features
@@ -54,6 +62,7 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0](https://github.com/your-username/obsidian-my-plugin/compare/1.1.0...1.2.0) (2024-05-14)
 ## [1.1.0](https://github.com/your-username/obsidian-my-plugin/compare/1.0.0...1.1.0) (2024-05-13)
 ## 1.0.0 (2024-04-26)
+
 
 
 

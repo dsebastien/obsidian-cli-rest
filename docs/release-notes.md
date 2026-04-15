@@ -1,5 +1,13 @@
 # Release Notes
 
+## 1.0.0 (2026-04-15)
+
+### Features
+
+- **all:** improved behavior and performance at startup (loading in the background)
+- **all:** improved MCP and docs
+- **all:** updated
+
 ## 0.1.0 (2026-02-21)
 
 ### Features
