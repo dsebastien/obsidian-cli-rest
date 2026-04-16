@@ -1,6 +1,6 @@
 {
     "name": "obsidian-cli-rest",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Exposes Obsidian CLI commands as RESTful API endpoints and an MCP server for AI tool integration",
     "author": {
         "name": "Sébastien Dubois",
