@@ -17,11 +17,11 @@ export function registerToggleServerCommand(plugin: CliRestMcpPlugin): void {
 async function toggleServer(plugin: CliRestMcpPlugin): Promise<void> {
     if (plugin.isServerRunning()) {
         await plugin.stopServer()
-        new Notice('CLI REST MCP server stopped')
+        new Notice('REST and MCP server stopped')
     } else {
         await plugin.startServer()
         new Notice(
-            `CLI REST MCP server started on ${plugin.settings.bindAddress}:${plugin.settings.port}`
+            `REST and MCP server started on ${plugin.settings.bindAddress}:${plugin.settings.port}`
         )
     }
 }

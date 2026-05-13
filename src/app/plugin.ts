@@ -105,7 +105,7 @@ export class CliRestMcpPlugin extends Plugin {
             this.cliStatus = await checkCliAvailability()
             if (!this.cliStatus.available) {
                 new Notice(
-                    'CLI REST MCP: CLI binary not found. Install the Obsidian CLI to use this plugin.'
+                    'REST and MCP server: CLI binary not found. Install the Obsidian CLI to use this plugin.'
                 )
             } else {
                 await this.discoverCommands()
@@ -159,7 +159,7 @@ export class CliRestMcpPlugin extends Plugin {
                     await this.delay(RETRY_DELAY_MS)
                 } else {
                     log(`Auto-start failed: ${msg}`, 'error')
-                    new Notice(`CLI REST MCP: Failed to start server: ${msg}`)
+                    new Notice(`REST and MCP server: Failed to start server: ${msg}`)
                     return
                 }
             }
