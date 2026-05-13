@@ -12,7 +12,7 @@ export function generateOpenApiSpec(baseUrl: string): Record<string, unknown> {
     return {
         openapi: '3.1.0',
         info: {
-            title: 'Obsidian CLI REST API',
+            title: 'CLI REST MCP API',
             description:
                 'RESTful API that proxies Obsidian CLI commands. ' +
                 'All CLI command endpoints accept POST as a universal fallback method. ' +
@@ -23,7 +23,7 @@ export function generateOpenApiSpec(baseUrl: string): Record<string, unknown> {
                 url: 'https://github.com/dsebastien/obsidian-cli-rest/blob/main/LICENSE'
             }
         },
-        servers: [{ url: baseUrl, description: 'Local Obsidian CLI REST server' }],
+        servers: [{ url: baseUrl, description: 'Local CLI REST MCP server' }],
         tags: [...categories].sort().map((cat) => ({ name: cat, description: `${cat} commands` })),
         paths: buildPaths(commands),
         components: buildComponents()
@@ -335,7 +335,7 @@ export function generateDocsHtml(specUrl: string): string {
     return `<!doctype html>
 <html>
 <head>
-    <title>Obsidian CLI REST API</title>
+    <title>CLI REST MCP API</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>

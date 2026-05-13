@@ -46,7 +46,7 @@ export class McpServerWrapper {
         this.context = context
         this.mcpServer = new McpServer(
             {
-                name: 'obsidian-cli-rest',
+                name: 'cli-rest-mcp',
                 version: '0.1.0'
             },
             {

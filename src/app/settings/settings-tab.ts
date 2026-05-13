@@ -1,15 +1,15 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
-import type { ObsidianCliRestPlugin } from '../plugin'
+import type { CliRestMcpPlugin } from '../plugin'
 import { produce } from 'immer'
 import type { Draft } from 'immer'
 import type { PluginSettings } from '../types/plugin-settings.intf'
 import { generateApiKey } from '../../utils/crypto'
 import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../assets/buy-me-a-coffee'
 
-export class ObsidianCliRestSettingTab extends PluginSettingTab {
-    plugin: ObsidianCliRestPlugin
+export class CliRestMcpSettingTab extends PluginSettingTab {
+    plugin: CliRestMcpPlugin
 
-    constructor(app: App, plugin: ObsidianCliRestPlugin) {
+    constructor(app: App, plugin: CliRestMcpPlugin) {
         super(app, plugin)
         this.plugin = plugin
     }

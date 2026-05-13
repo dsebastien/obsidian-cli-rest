@@ -1,4 +1,4 @@
-import { ObsidianCliRestPlugin } from './app/plugin'
+import { CliRestMcpPlugin } from './app/plugin'
 
 // noinspection JSUnusedGlobalSymbols
-export default ObsidianCliRestPlugin
+export default CliRestMcpPlugin

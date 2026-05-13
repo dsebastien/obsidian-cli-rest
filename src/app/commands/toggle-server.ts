@@ -1,10 +1,10 @@
 import { Notice } from 'obsidian'
-import type { ObsidianCliRestPlugin } from '../plugin'
+import type { CliRestMcpPlugin } from '../plugin'
 
 /**
  * Register the toggle server command.
  */
-export function registerToggleServerCommand(plugin: ObsidianCliRestPlugin): void {
+export function registerToggleServerCommand(plugin: CliRestMcpPlugin): void {
     plugin.addCommand({
         id: 'toggle-server',
         name: 'Toggle REST/MCP server',
@@ -14,14 +14,14 @@ export function registerToggleServerCommand(plugin: ObsidianCliRestPlugin): void
     })
 }
 
-async function toggleServer(plugin: ObsidianCliRestPlugin): Promise<void> {
+async function toggleServer(plugin: CliRestMcpPlugin): Promise<void> {
     if (plugin.isServerRunning()) {
         await plugin.stopServer()
-        new Notice('Obsidian CLI REST server stopped')
+        new Notice('CLI REST MCP server stopped')
     } else {
         await plugin.startServer()
         new Notice(
-            `Obsidian CLI REST server started on ${plugin.settings.bindAddress}:${plugin.settings.port}`
+            `CLI REST MCP server started on ${plugin.settings.bindAddress}:${plugin.settings.port}`
         )
     }
 }
@@ -29,7 +29,7 @@ async function toggleServer(plugin: ObsidianCliRestPlugin): Promise<void> {
 /**
  * Register the copy API key command.
  */
-export function registerCopyApiKeyCommand(plugin: ObsidianCliRestPlugin): void {
+export function registerCopyApiKeyCommand(plugin: CliRestMcpPlugin): void {
     plugin.addCommand({
         id: 'copy-api-key',
         name: 'Copy API key to clipboard',
@@ -47,7 +47,7 @@ export function registerCopyApiKeyCommand(plugin: ObsidianCliRestPlugin): void {
 /**
  * Register the copy REST API URL command.
  */
-export function registerCopyRestUrlCommand(plugin: ObsidianCliRestPlugin): void {
+export function registerCopyRestUrlCommand(plugin: CliRestMcpPlugin): void {
     plugin.addCommand({
         id: 'copy-rest-url',
         name: 'Copy REST API URL to clipboard',
@@ -62,7 +62,7 @@ export function registerCopyRestUrlCommand(plugin: ObsidianCliRestPlugin): void 
 /**
  * Register the copy MCP server URL command.
  */
-export function registerCopyMcpUrlCommand(plugin: ObsidianCliRestPlugin): void {
+export function registerCopyMcpUrlCommand(plugin: CliRestMcpPlugin): void {
     plugin.addCommand({
         id: 'copy-mcp-url',
         name: 'Copy MCP server URL to clipboard',
@@ -77,7 +77,7 @@ export function registerCopyMcpUrlCommand(plugin: ObsidianCliRestPlugin): void {
 /**
  * Register the copy API docs URL command.
  */
-export function registerCopyDocsUrlCommand(plugin: ObsidianCliRestPlugin): void {
+export function registerCopyDocsUrlCommand(plugin: CliRestMcpPlugin): void {
     plugin.addCommand({
         id: 'copy-docs-url',
         name: 'Copy API docs URL to clipboard',

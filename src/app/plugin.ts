@@ -1,7 +1,7 @@
 import { Notice, Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, pluginSettingsSchema } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
-import { ObsidianCliRestSettingTab } from './settings/settings-tab'
+import { CliRestMcpSettingTab } from './settings/settings-tab'
 import { log } from '../utils/log'
 import { produce } from 'immer'
 import type { Draft } from 'immer'
@@ -36,7 +36,7 @@ let sharedHttpServer: HttpServerWrapper | null = null
 /** Pre-computed set of static registry command names for quick lookup during discovery. */
 const CLI_COMMAND_REGISTRY_NAMES = new Set(CLI_COMMAND_REGISTRY.map((c) => c.command))
 
-export class ObsidianCliRestPlugin extends Plugin {
+export class CliRestMcpPlugin extends Plugin {
     settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
     cliStatus: CliAvailabilityResult = {
         available: false,
@@ -75,7 +75,7 @@ export class ObsidianCliRestPlugin extends Plugin {
         registerCopyDocsUrlCommand(this)
 
         // Add settings tab
-        this.addSettingTab(new ObsidianCliRestSettingTab(this.app, this))
+        this.addSettingTab(new CliRestMcpSettingTab(this.app, this))
 
         // Status bar
         this.statusBarEl = this.addStatusBarItem()
@@ -105,7 +105,7 @@ export class ObsidianCliRestPlugin extends Plugin {
             this.cliStatus = await checkCliAvailability()
             if (!this.cliStatus.available) {
                 new Notice(
-                    'Obsidian CLI REST: CLI binary not found. Install the Obsidian CLI to use this plugin.'
+                    'CLI REST MCP: CLI binary not found. Install the Obsidian CLI to use this plugin.'
                 )
             } else {
                 await this.discoverCommands()
@@ -159,7 +159,7 @@ export class ObsidianCliRestPlugin extends Plugin {
                     await this.delay(RETRY_DELAY_MS)
                 } else {
                     log(`Auto-start failed: ${msg}`, 'error')
-                    new Notice(`Obsidian CLI REST: Failed to start server: ${msg}`)
+                    new Notice(`CLI REST MCP: Failed to start server: ${msg}`)
                     return
                 }
             }

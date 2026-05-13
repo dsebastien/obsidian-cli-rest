@@ -20,7 +20,7 @@ let nonZeroWithVersionPath: string
 const missingPath = '/this/path/does/not/exist/obsidian-xyz'
 
 beforeAll(() => {
-    workDir = mkdtempSync(join(tmpdir(), 'obsidian-cli-rest-test-'))
+    workDir = mkdtempSync(join(tmpdir(), 'cli-rest-mcp-test-'))
 
     cliPath = join(workDir, 'fake-cli')
     writeFileSync(cliPath, '#!/bin/sh\necho "1.12.2"\n')
