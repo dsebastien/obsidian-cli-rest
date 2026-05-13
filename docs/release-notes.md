@@ -1,5 +1,12 @@
 # Release Notes
 
+## 1.1.0 (2026-05-13)
+
+### Features
+
+- **all:** improved obsidian cli detection/usage
+- **all:** updated release workflow and removed hardcoded cli entries
+
 ## 1.0.1 (2026-04-16)
 
 ### Bug Fixes
