@@ -281,43 +281,6 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         description: 'Remove a property from a file (defaults to active file)'
     },
 
-    // ── Daily Notes ──────────────────────────────────────────────────
-    {
-        command: 'daily',
-        httpMethod: 'POST',
-        category: 'daily',
-        dangerous: false,
-        description: "Open today's daily note"
-    },
-    {
-        command: 'daily:path',
-        httpMethod: 'GET',
-        category: 'daily',
-        dangerous: false,
-        description: 'Get daily note path (even if file does not exist yet)'
-    },
-    {
-        command: 'daily:read',
-        httpMethod: 'GET',
-        category: 'daily',
-        dangerous: false,
-        description: 'Read daily note contents'
-    },
-    {
-        command: 'daily:append',
-        httpMethod: 'POST',
-        category: 'daily',
-        dangerous: false,
-        description: 'Append content to daily note'
-    },
-    {
-        command: 'daily:prepend',
-        httpMethod: 'POST',
-        category: 'daily',
-        dangerous: false,
-        description: 'Prepend content to daily note'
-    },
-
     // ── Random Notes ─────────────────────────────────────────────────
     {
         command: 'random',
@@ -332,15 +295,6 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         category: 'random',
         dangerous: false,
         description: 'Read a random note (includes path)'
-    },
-
-    // ── Wordcount ────────────────────────────────────────────────────
-    {
-        command: 'wordcount',
-        httpMethod: 'GET',
-        category: 'wordcount',
-        dangerous: false,
-        description: 'Count words and characters (defaults to active file)'
     },
 
     // ── Templates ────────────────────────────────────────────────────
@@ -687,57 +641,6 @@ export const CLI_COMMAND_REGISTRY: readonly CliCommandDefinition[] = [
         category: 'history',
         dangerous: false,
         description: 'Open file recovery UI'
-    },
-
-    // ── Sync ─────────────────────────────────────────────────────────
-    {
-        command: 'sync',
-        httpMethod: 'POST',
-        category: 'sync',
-        dangerous: false,
-        description: 'Pause or resume sync'
-    },
-    {
-        command: 'sync:status',
-        httpMethod: 'GET',
-        category: 'sync',
-        dangerous: false,
-        description: 'Show sync status and usage'
-    },
-    {
-        command: 'sync:history',
-        httpMethod: 'GET',
-        category: 'sync',
-        dangerous: false,
-        description: 'List sync version history for a file (defaults to active file)'
-    },
-    {
-        command: 'sync:read',
-        httpMethod: 'GET',
-        category: 'sync',
-        dangerous: false,
-        description: 'Read a sync version (defaults to active file)'
-    },
-    {
-        command: 'sync:restore',
-        httpMethod: 'POST',
-        category: 'sync',
-        dangerous: false,
-        description: 'Restore a sync version (defaults to active file)'
-    },
-    {
-        command: 'sync:open',
-        httpMethod: 'POST',
-        category: 'sync',
-        dangerous: false,
-        description: 'Open sync history (defaults to active file)'
-    },
-    {
-        command: 'sync:deleted',
-        httpMethod: 'GET',
-        category: 'sync',
-        dangerous: false,
-        description: 'List deleted files in sync'
     },
 
     // ── Publish ──────────────────────────────────────────────────────

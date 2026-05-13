@@ -50,12 +50,10 @@ describe('CLI_COMMAND_REGISTRY', () => {
             'tags',
             'tasks',
             'properties',
-            'daily',
             'plugins',
             'themes',
             'snippets',
             'history',
-            'sync',
             'publish',
             'developer',
             'workspace',
@@ -313,10 +311,10 @@ describe('searchCommands', () => {
     })
 
     test('filters by category', () => {
-        const result = searchCommands({ category: 'daily' })
+        const result = searchCommands({ category: 'files' })
         expect(result.commands.length).toBeGreaterThan(0)
         for (const cmd of result.commands) {
-            expect(cmd.category).toBe('daily')
+            expect(cmd.category).toBe('files')
         }
     })
 
@@ -347,10 +345,10 @@ describe('searchCommands', () => {
     })
 
     test('combines query and category with AND logic', () => {
-        const result = searchCommands({ query: 'append', category: 'daily' })
+        const result = searchCommands({ query: 'append', category: 'files' })
         expect(result.commands.length).toBeGreaterThan(0)
         for (const cmd of result.commands) {
-            expect(cmd.category).toBe('daily')
+            expect(cmd.category).toBe('files')
             const matchesCommand = cmd.command.toLowerCase().includes('append')
             const matchesDescription = cmd.description.toLowerCase().includes('append')
             expect(matchesCommand || matchesDescription).toBe(true)
@@ -358,10 +356,10 @@ describe('searchCommands', () => {
     })
 
     test('always returns categories regardless of filters', () => {
-        const result = searchCommands({ category: 'daily' })
+        const result = searchCommands({ category: 'files' })
         expect(result.categories).toContain('general')
         expect(result.categories).toContain('files')
-        expect(result.categories).toContain('daily')
+        expect(result.categories).toContain('properties')
     })
 
     test('includes discovered commands', () => {

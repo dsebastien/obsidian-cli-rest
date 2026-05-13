@@ -202,15 +202,15 @@ export class McpServerWrapper {
                 description: [
                     'Discover available Obsidian CLI commands.',
                     'Call with no arguments to get an overview of all commands and categories.',
-                    'Use "category" to filter by category (e.g., "daily", "files", "search").',
+                    'Use "category" to filter by category (e.g., "properties", "files", "search").',
                     'Use "query" to find commands by name or description (case-insensitive substring match).',
                     'Both filters can be combined.',
                     '',
                     'Typical workflow:',
                     '1. search() — overview of categories',
-                    '2. search(category: "daily") — commands in a category',
-                    '3. execute(command: "help", params: { command: "daily:append" }) — parameter details',
-                    '4. execute(command: "daily:append", params: { content: "Hello" }) — run it'
+                    '2. search(category: "properties") — commands in a category',
+                    '3. execute(command: "help", params: { command: "property:set" }) — parameter details',
+                    '4. execute(command: "property:set", params: { path: "note.md", name: "rating", value: "5" }) — run it'
                 ].join('\n'),
                 inputSchema: z.object({
                     query: z
@@ -223,7 +223,7 @@ export class McpServerWrapper {
                         .string()
                         .optional()
                         .describe(
-                            'Filter by exact category name (e.g., "daily", "files", "search")'
+                            'Filter by exact category name (e.g., "properties", "files", "search")'
                         )
                 })
             },
@@ -269,13 +269,13 @@ export class McpServerWrapper {
                 title: 'Execute command',
                 description: [
                     'Execute an Obsidian CLI command.',
-                    'Commands use colon notation (e.g., "daily:append", "property:set").',
+                    'Commands use colon notation (e.g., "property:set", "tag:add").',
                     'Use the "search" tool first to discover available commands.',
                     '',
                     'Examples:',
                     '  execute(command: "version") — Obsidian version',
-                    '  execute(command: "read", params: { file: "notes/todo.md" }) — read a file',
-                    '  execute(command: "daily:append", params: { content: "New entry" }) — append to daily note',
+                    '  execute(command: "read", params: { path: "notes/todo.md" }) — read a file',
+                    '  execute(command: "append", params: { path: "notes/log.md", content: "New entry" }) — append',
                     '  execute(command: "search", params: { query: "meeting" }) — search vault',
                     '  execute(command: "help", params: { command: "append" }) — get help for a command'
                 ].join('\n'),
@@ -283,7 +283,7 @@ export class McpServerWrapper {
                     command: z
                         .string()
                         .describe(
-                            'CLI command to execute (e.g., "daily:append", "read", "search")'
+                            'CLI command to execute (e.g., "property:set", "read", "search")'
                         ),
                     vault: z.string().optional().describe('Target vault name'),
                     params: z
