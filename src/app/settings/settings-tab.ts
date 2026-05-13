@@ -4,6 +4,7 @@ import { produce } from 'immer'
 import type { Draft } from 'immer'
 import type { PluginSettings } from '../types/plugin-settings.intf'
 import { generateApiKey } from '../../utils/crypto'
+import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../assets/buy-me-a-coffee'
 
 export class ObsidianCliRestSettingTab extends PluginSettingTab {
     plugin: ObsidianCliRestPlugin
@@ -301,8 +302,7 @@ export class ObsidianCliRestSettingTab extends PluginSettingTab {
             href: 'https://www.buymeacoffee.com/dsebastien'
         })
         const imgEl = linkEl.createEl('img')
-        imgEl.src =
-            'https://github.com/dsebastien/obsidian-plugin-template/blob/main/src/assets/buy-me-a-coffee.png?raw=true'
+        imgEl.src = BUY_ME_A_COFFEE_BADGE_DATA_URL
         imgEl.alt = 'Buy me a coffee'
         imgEl.width = width
     }

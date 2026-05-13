@@ -16,6 +16,13 @@ import { log } from '../../utils/log'
 export interface McpServerContext {
     settings: PluginSettings
     cliStatus: CliAvailabilityResult
+    /**
+     * Optional self-heal callback. If `cliStatus.available` is false when a
+     * tool call arrives, the server calls this once and uses the returned
+     * result for the request. Recovers from a stale negative detection
+     * caused by an IPC race during Obsidian startup.
+     */
+    recheckCli?: () => Promise<CliAvailabilityResult>
 }
 
 /**
@@ -333,17 +340,23 @@ export class McpServerWrapper {
                     return this.handleInternalCommand(command)
                 }
 
-                // Check CLI availability
-                if (!this.context.cliStatus.available) {
+                // Check CLI availability — self-heal first if a recheck
+                // callback is wired. Initial detection can race with
+                // sibling-plugin init during Obsidian startup; re-probing on
+                // first failing tool call typically resolves it without user
+                // intervention.
+                let cliStatus = this.context.cliStatus
+                if (!cliStatus.available && this.context.recheckCli) {
+                    cliStatus = await this.context.recheckCli()
+                }
+                if (!cliStatus.available) {
                     return {
                         content: [
                             {
                                 type: 'text' as const,
                                 text: JSON.stringify({
                                     ok: false,
-                                    error:
-                                        'Obsidian CLI is not available: ' +
-                                        this.context.cliStatus.error
+                                    error: 'Obsidian CLI is not available: ' + cliStatus.error
                                 })
                             }
                         ],
@@ -362,7 +375,7 @@ export class McpServerWrapper {
                     params,
                     flags,
                     vault,
-                    binaryPath: this.context.cliStatus.binaryPath,
+                    binaryPath: cliStatus.binaryPath,
                     timeout: this.context.settings.requestTimeout
                 })
 

@@ -48,6 +48,12 @@ export class ObsidianCliRestPlugin extends Plugin {
     private httpServer: HttpServerWrapper | null = null
     private mcpServer: McpServerWrapper | null = null
     private statusBarEl: HTMLElement | null = null
+    /**
+     * In-flight CLI recheck promise, used to dedupe concurrent self-heal
+     * attempts triggered by simultaneous requests arriving while the CLI is
+     * still marked unavailable.
+     */
+    private recheckInFlight: Promise<CliAvailabilityResult> | null = null
 
     override async onload(): Promise<void> {
         log('Initializing', 'debug')
@@ -75,9 +81,18 @@ export class ObsidianCliRestPlugin extends Plugin {
         this.statusBarEl = this.addStatusBarItem()
         this.updateStatusBar()
 
-        // Defer CLI availability check, command discovery, and auto-start so
-        // we don't block Obsidian's startup on spawning the CLI binary.
-        void this.initializeInBackground()
+        // Defer CLI availability check, command discovery, and auto-start
+        // until Obsidian's UI is fully constructed AND all community plugins
+        // have run their own `onload()`. This matters because the Obsidian
+        // launcher (`/usr/bin/obsidian` etc.) is not an independent CLI; it
+        // forwards `obsidian <subcommand>` over Electron single-instance IPC
+        // back into the running instance. The sibling plugin that actually
+        // serves `version` may not be registered yet at the moment our own
+        // `onload()` returns. Layout-ready is the earliest event after which
+        // that handler is guaranteed to be wired up.
+        this.app.workspace.onLayoutReady(() => {
+            void this.initializeInBackground()
+        })
     }
 
     /**
@@ -99,16 +114,10 @@ export class ObsidianCliRestPlugin extends Plugin {
             // If the user manually started the server before the probe finished,
             // refresh its context so requests see the real CLI status.
             if (this.httpServer) {
-                this.httpServer.updateContext({
-                    settings: this.settings,
-                    cliStatus: this.cliStatus
-                })
+                this.httpServer.updateContext(this.buildContext())
             }
             if (this.mcpServer) {
-                this.mcpServer.updateContext({
-                    settings: this.settings,
-                    cliStatus: this.cliStatus
-                })
+                this.mcpServer.updateContext(this.buildContext())
             }
 
             if (this.settings.autoStart && !this.isServerRunning()) {
@@ -180,10 +189,7 @@ export class ObsidianCliRestPlugin extends Plugin {
             new Notice('API key auto-generated (required when binding to 0.0.0.0)')
         }
 
-        const context = {
-            settings: this.settings,
-            cliStatus: this.cliStatus
-        }
+        const context = this.buildContext()
 
         // Create MCP server if enabled
         let mcpServer: McpServerWrapper | null = null
@@ -233,22 +239,57 @@ export class ObsidianCliRestPlugin extends Plugin {
         await this.startServer()
     }
 
-    async recheckCli(): Promise<void> {
-        this.cliStatus = await checkCliAvailability()
-        if (this.cliStatus.available) {
-            await this.discoverCommands()
+    /**
+     * Re-probe the Obsidian CLI binary, refresh discovered commands on
+     * success, and propagate the new status to any running server.
+     *
+     * Concurrent calls are deduplicated: if a recheck is already in flight,
+     * additional callers receive the same promise. This matters because
+     * self-healing on the request path (router/MCP) can fire multiple
+     * rechecks in parallel under load.
+     *
+     * Returns the latest `CliAvailabilityResult` so request handlers can
+     * branch on the freshly-probed status without an extra `this.cliStatus`
+     * read race.
+     */
+    async recheckCli(): Promise<CliAvailabilityResult> {
+        if (this.recheckInFlight) {
+            return this.recheckInFlight
         }
-        if (this.httpServer) {
-            this.httpServer.updateContext({
-                settings: this.settings,
-                cliStatus: this.cliStatus
-            })
-        }
-        if (this.mcpServer) {
-            this.mcpServer.updateContext({
-                settings: this.settings,
-                cliStatus: this.cliStatus
-            })
+        this.recheckInFlight = (async () => {
+            try {
+                this.cliStatus = await checkCliAvailability()
+                if (this.cliStatus.available) {
+                    await this.discoverCommands()
+                }
+                if (this.httpServer) {
+                    this.httpServer.updateContext(this.buildContext())
+                }
+                if (this.mcpServer) {
+                    this.mcpServer.updateContext(this.buildContext())
+                }
+                return this.cliStatus
+            } finally {
+                this.recheckInFlight = null
+            }
+        })()
+        return this.recheckInFlight
+    }
+
+    /**
+     * Build a fresh context snapshot for the HTTP router and MCP server.
+     * Includes a bound `recheckCli` so handlers can self-heal a stale
+     * `cliStatus.available === false` without holding a plugin reference.
+     */
+    private buildContext(): {
+        settings: PluginSettings
+        cliStatus: CliAvailabilityResult
+        recheckCli: () => Promise<CliAvailabilityResult>
+    } {
+        return {
+            settings: this.settings,
+            cliStatus: this.cliStatus,
+            recheckCli: () => this.recheckCli()
         }
     }
 

@@ -16,6 +16,23 @@ export interface CliAvailabilityResult {
 const FALLBACK_CANDIDATES = ['obsidian', '/usr/local/bin/obsidian', '/usr/bin/obsidian']
 const CHECK_TIMEOUT_MS = 15_000
 
+/**
+ * Delays (ms) between successive CLI-detection attempts. The first attempt is
+ * immediate; subsequent attempts wait the listed amount BEFORE re-probing.
+ *
+ * Rationale: the Obsidian launcher is *not* an independent CLI — it's an
+ * Electron single-instance forwarder that hands off `obsidian <subcommand>`
+ * over IPC to the already-running Obsidian process. When this plugin runs
+ * `obsidian version` from its own `onload()`, the receiving Obsidian (the
+ * same process) hasn't necessarily finished loading the sibling plugin that
+ * actually serves the `version` command yet, so the IPC reply is either
+ * empty stdout or "Command not found". Retrying with backoff lets sibling
+ * plugins finish their own `onload()` before we conclude the CLI is unusable.
+ *
+ * Total worst-case extra wait: ~3.75s across delays + per-attempt spawn cost.
+ */
+const DEFAULT_RETRY_DELAYS_MS: readonly number[] = [0, 250, 500, 1000, 2000]
+
 interface CandidateResponse {
     stdout: string
     stderr: string
@@ -160,6 +177,53 @@ function buildCandidates(fallbacks: readonly string[]): string[] {
 }
 
 /**
+ * Run a single CLI-detection pass over the ordered candidate list.
+ * Returns the first candidate that produces a recognized version banner,
+ * or a structured failure with per-candidate reasons.
+ */
+async function probeOnce(
+    ordered: readonly string[]
+): Promise<{ result: CliAvailabilityResult; failureReasons: string[] }> {
+    const failureReasons: string[] = []
+
+    for (const candidate of ordered) {
+        const result = await tryCandidate(candidate)
+
+        if (isVersionOutput(result.stdout)) {
+            if (result.errorMessage) {
+                log(
+                    `CLI candidate ${result.path} exited with an error but returned a valid version, accepting: ${result.errorMessage}`,
+                    'debug'
+                )
+            }
+            log(`CLI found at ${result.path}: ${result.stdout}`, 'debug')
+            return {
+                result: {
+                    available: true,
+                    binaryPath: result.path,
+                    version: result.stdout,
+                    error: ''
+                },
+                failureReasons: []
+            }
+        }
+
+        const reason = describeFailure(result)
+        failureReasons.push(`${candidate}: ${reason}`)
+        log(`CLI candidate ${candidate} rejected — ${reason}`, 'debug')
+    }
+
+    return {
+        result: { available: false, binaryPath: '', version: '', error: '' },
+        failureReasons
+    }
+}
+
+function delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
  * Check if the Obsidian CLI binary is available on the system.
  *
  * Discovery order:
@@ -176,46 +240,52 @@ function buildCandidates(fallbacks: readonly string[]): string[] {
  * with a non-zero status, which can happen when Electron's single-instance
  * forwarder is involved.
  *
- * Per-candidate failures are aggregated into the final warn-level message
- * so operators can see *why* each probe failed rather than a bare list.
+ * Retry behaviour: if every candidate fails the first pass, the whole probe
+ * is repeated according to `retryDelaysMs` (default
+ * `DEFAULT_RETRY_DELAYS_MS`). This is critical inside Obsidian itself, where
+ * the launcher round-trips through IPC to the same running instance; the
+ * sibling plugin that serves `version` may not have finished loading yet at
+ * the moment we first probe. Pass `[0]` to disable retries (e.g. in tests).
+ *
+ * Per-candidate failures from the FINAL attempt are aggregated into the
+ * warn-level error message so operators can see *why* each probe failed.
  *
  * The `candidates` parameter is exposed for tests; production callers
  * should pass nothing.
  */
 export async function checkCliAvailability(
-    candidates?: readonly string[]
+    candidates?: readonly string[],
+    retryDelaysMs: readonly number[] = DEFAULT_RETRY_DELAYS_MS
 ): Promise<CliAvailabilityResult> {
     const ordered = candidates ? [...candidates] : buildCandidates(FALLBACK_CANDIDATES)
-    const failureReasons: string[] = []
+    const delays = retryDelaysMs.length > 0 ? retryDelaysMs : [0]
+    let lastFailureReasons: string[] = []
 
-    for (const candidate of ordered) {
-        const result = await tryCandidate(candidate)
-
-        if (isVersionOutput(result.stdout)) {
-            if (result.errorMessage) {
-                log(
-                    `CLI candidate ${result.path} exited with an error but returned a valid version, accepting: ${result.errorMessage}`,
-                    'debug'
-                )
-            }
-            log(`CLI found at ${result.path}: ${result.stdout}`, 'debug')
-            return {
-                available: true,
-                binaryPath: result.path,
-                version: result.stdout,
-                error: ''
-            }
+    for (let attempt = 0; attempt < delays.length; attempt++) {
+        const wait = delays[attempt] ?? 0
+        if (wait > 0) {
+            log(
+                `CLI probe attempt ${attempt + 1}/${delays.length} after ${wait}ms backoff`,
+                'debug'
+            )
+            await delay(wait)
         }
 
-        const reason = describeFailure(result)
-        failureReasons.push(`${candidate}: ${reason}`)
-        log(`CLI candidate ${candidate} rejected — ${reason}`, 'debug')
+        const { result, failureReasons } = await probeOnce(ordered)
+        if (result.available) {
+            if (attempt > 0) {
+                log(`CLI detected on retry attempt ${attempt + 1}`, 'info')
+            }
+            return result
+        }
+        lastFailureReasons = failureReasons
     }
 
     const errorMsg =
         'Obsidian CLI binary not found. Tried: ' +
         ordered.join(', ') +
-        (failureReasons.length > 0 ? ` | reasons: ${failureReasons.join('; ')}` : '')
+        (lastFailureReasons.length > 0 ? ` | reasons: ${lastFailureReasons.join('; ')}` : '') +
+        (delays.length > 1 ? ` | attempts: ${delays.length}` : '')
     log(errorMsg, 'warn')
     return {
         available: false,

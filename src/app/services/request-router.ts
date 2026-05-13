@@ -21,6 +21,13 @@ const CLI_PREFIX = `${API_PREFIX}/cli/`
 export interface RouterContext {
     settings: PluginSettings
     cliStatus: CliAvailabilityResult
+    /**
+     * Optional self-heal callback. If `cliStatus.available` is false when a
+     * request arrives, the router calls this once and uses the returned
+     * result for the request. Lets the system recover from a stale negative
+     * detection without requiring the user to click "Recheck" in settings.
+     */
+    recheckCli?: () => Promise<CliAvailabilityResult>
 }
 
 /**
@@ -182,12 +189,19 @@ async function handleCliCommand(
         return handleInternalCommand(res, command, ctx)
     }
 
-    // Check CLI availability
-    if (!ctx.cliStatus.available) {
+    // Check CLI availability — self-heal first if a recheck callback is wired.
+    // Initial detection happens at plugin startup, where Electron's
+    // single-instance IPC can race with sibling plugin init and produce a
+    // false-negative. Re-probing on first failing request typically resolves it.
+    let cliStatus = ctx.cliStatus
+    if (!cliStatus.available && ctx.recheckCli) {
+        cliStatus = await ctx.recheckCli()
+    }
+    if (!cliStatus.available) {
         sendError(
             res,
             503,
-            'Obsidian CLI is not available: ' + ctx.cliStatus.error,
+            'Obsidian CLI is not available: ' + cliStatus.error,
             ctx.settings.enableCors
         )
         return true
@@ -229,7 +243,7 @@ async function handleCliCommand(
         params,
         flags,
         vault,
-        binaryPath: ctx.cliStatus.binaryPath,
+        binaryPath: cliStatus.binaryPath,
         timeout: ctx.settings.requestTimeout
     })
 
