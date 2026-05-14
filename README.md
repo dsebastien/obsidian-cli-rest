@@ -16,10 +16,33 @@ Control your Obsidian vault programmatically. This plugin turns **all Obsidian C
 
 ## Installation
 
-1. Open **Settings > Community plugins** in Obsidian
-2. Search for **Obsidian CLI REST**
-3. Select **Install**, then **Enable**
-4. The server starts automatically on `http://127.0.0.1:27124`
+### Community plugins (recommended)
+
+1. In Obsidian, go to **Settings → Community plugins**.
+2. Disable **Restricted mode** if it's enabled.
+3. Select **Browse**, search for **REST and MCP server**, install it, then enable it.
+
+You can also browse the catalog on the [Obsidian Community](https://community.obsidian.md/) website.
+
+### Manual installation
+
+If the plugin isn't listed in the community catalog yet (or you want a specific version):
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/dsebastien/obsidian-cli-rest/releases).
+2. Copy them into `<Vault>/.obsidian/plugins/cli-rest-mcp/`.
+3. Reload Obsidian and enable **REST and MCP server** in **Settings → Community plugins**.
+
+### BRAT (bleeding edge)
+
+[BRAT](https://github.com/TfTHacker/obsidian42-brat) (Beta Reviewers Auto-update Tool) installs plugins straight from a GitHub repo and keeps them updated automatically. Use this if you want the latest commits — **things might break**.
+
+1. Install **Obsidian42 - BRAT** from **Settings → Community plugins → Browse** and enable it.
+2. Run **BRAT: Add a beta plugin for testing** from the command palette.
+3. Paste `https://github.com/dsebastien/obsidian-cli-rest`.
+4. Select the latest version and confirm.
+5. Enable **REST and MCP server** in **Settings → Community plugins**.
+
+Once enabled, the server starts automatically on `http://127.0.0.1:27124`.
 
 ## Quick start
 
