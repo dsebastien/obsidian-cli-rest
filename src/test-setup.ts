@@ -5,6 +5,14 @@
  */
 import { mock } from 'bun:test'
 
+// Bun's test runner doesn't expose a `window` global, but production code uses
+// `window.setTimeout`/`clearTimeout` etc. for popout-window compatibility (a
+// requirement from Obsidian's community-catalog reviewer). Stub it here so the
+// tests can resolve those calls to the underlying globals.
+if (typeof globalThis.window === 'undefined') {
+    ;(globalThis as { window?: typeof globalThis }).window = globalThis
+}
+
 // Mock the obsidian module (fire-and-forget, no need to await)
 void mock.module('obsidian', () => ({
     Notice: class Notice {

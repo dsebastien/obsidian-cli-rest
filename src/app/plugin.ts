@@ -167,7 +167,7 @@ export class CliRestMcpPlugin extends Plugin {
     }
 
     private delay(ms: number): Promise<void> {
-        return new Promise((resolve) => setTimeout(resolve, ms))
+        return new Promise((resolve) => window.setTimeout(resolve, ms))
     }
 
     async startServer(): Promise<void> {
@@ -359,8 +359,8 @@ export class CliRestMcpPlugin extends Plugin {
                     if (key in raw) {
                         const fieldParsed = pluginSettingsSchema.shape[key].safeParse(raw[key])
                         if (fieldParsed.success) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            ;(draft as any)[key] = fieldParsed.data
+                            ;(draft as Record<keyof PluginSettings, unknown>)[key] =
+                                fieldParsed.data
                         }
                     }
                 }
