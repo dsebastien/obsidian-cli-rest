@@ -164,6 +164,22 @@ describe('deriveCandidatesFromProcess', () => {
         expect(derived).toEqual(['/Applications/Obsidian.app/Contents/MacOS/Obsidian'])
     })
 
+    test('macOS .app bundle: also derives when argv points to obsidian.asar (issue #2)', () => {
+        // Standard /Applications/Obsidian.app installs ship both app.asar and
+        // obsidian.asar in Contents/Resources/. Electron's argv[1] can point
+        // to either depending on Obsidian's bootstrap path.
+        const derived = deriveCandidatesFromProcess({
+            platform: 'darwin',
+            argv: [
+                '/Applications/Obsidian.app/Contents/MacOS/Obsidian',
+                '/Applications/Obsidian.app/Contents/Resources/obsidian.asar'
+            ],
+            execPath: '/Applications/Obsidian.app/Contents/MacOS/Obsidian',
+            env: {}
+        })
+        expect(derived).toEqual(['/Applications/Obsidian.app/Contents/MacOS/Obsidian'])
+    })
+
     test('Windows: derives sibling Obsidian.exe', () => {
         const derived = deriveCandidatesFromProcess({
             platform: 'win32',
@@ -175,6 +191,39 @@ describe('deriveCandidatesFromProcess', () => {
             env: {}
         })
         expect(derived).toContain('C:\\Users\\u\\AppData\\Local\\Obsidian\\Obsidian.exe')
+    })
+
+    test('Windows: also derives when argv points to obsidian.asar', () => {
+        const derived = deriveCandidatesFromProcess({
+            platform: 'win32',
+            argv: [
+                'C:\\Users\\u\\AppData\\Local\\Obsidian\\Obsidian.exe',
+                'C:\\Users\\u\\AppData\\Local\\Obsidian\\resources\\obsidian.asar'
+            ],
+            execPath: 'C:\\Users\\u\\AppData\\Local\\Obsidian\\Obsidian.exe',
+            env: {}
+        })
+        expect(derived).toContain('C:\\Users\\u\\AppData\\Local\\Obsidian\\Obsidian.exe')
+    })
+
+    test('Linux system install: also derives when argv points to obsidian.asar', () => {
+        const derived = deriveCandidatesFromProcess({
+            platform: 'linux',
+            argv: ['/usr/lib/electron39/electron', '/usr/lib/obsidian/obsidian.asar'],
+            execPath: '/usr/lib/electron39/electron',
+            env: {}
+        })
+        expect(derived).toEqual(['/usr/bin/obsidian'])
+    })
+
+    test('Linux /opt install: also derives when argv points to obsidian.asar', () => {
+        const derived = deriveCandidatesFromProcess({
+            platform: 'linux',
+            argv: ['/opt/Obsidian/obsidian', '/opt/Obsidian/resources/obsidian.asar'],
+            execPath: '/opt/Obsidian/obsidian',
+            env: {}
+        })
+        expect(derived).toContain('/opt/Obsidian/obsidian')
     })
 
     test('empty argv yields no process-derived candidates', () => {

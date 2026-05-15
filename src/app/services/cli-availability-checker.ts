@@ -99,10 +99,10 @@ export interface ProcessDiscoveryInput {
  *       possible from inside — fall back to standard PATH (may still work
  *       if the user exposed a flatpak-spawn wrapper on PATH)
  *   - macOS .app bundle:
- *       .../Obsidian.app/Contents/Resources/app.asar
+ *       .../Obsidian.app/Contents/Resources/{app,obsidian}.asar
  *       → .../Obsidian.app/Contents/MacOS/Obsidian
  *   - Windows:
- *       ...\resources\app.asar → ...\Obsidian.exe
+ *       ...\resources\{app,obsidian}.asar → ...\Obsidian.exe
  *
  * Order matters: the first candidate is the one most likely to be *the
  * exact binary that launched the current process*.
@@ -120,30 +120,38 @@ export function deriveCandidatesFromProcess(input: ProcessDiscoveryInput): strin
         candidates.push('/snap/bin/obsidian')
     }
 
-    const appAsar = argv[1] ?? ''
-    if (appAsar.endsWith('app.asar') || appAsar.endsWith('app.asar.unpacked')) {
-        const macMatch = appAsar.match(/^(.+\.app)\/Contents\/Resources\/app\.asar(?:\.unpacked)?$/)
+    // `argv[1]` is the asar Electron loaded as the main module. Historically
+    // this was always `app.asar`, but Obsidian's recent macOS bundles also
+    // ship `obsidian.asar` in `Contents/Resources/`, and `argv[1]` can point
+    // to either. Match on the `.asar` suffix so both names work; the
+    // surrounding directory layout is what actually identifies the install.
+    const mainAsar = argv[1] ?? ''
+    if (mainAsar.endsWith('.asar') || mainAsar.endsWith('.asar.unpacked')) {
+        const macMatch = mainAsar.match(
+            /^(.+\.app)\/Contents\/Resources\/[^/]+\.asar(?:\.unpacked)?$/
+        )
         if (macMatch && macMatch[1]) {
             candidates.push(`${macMatch[1]}/Contents/MacOS/Obsidian`)
         }
 
         if (platform === 'linux') {
-            if (appAsar === '/usr/lib/obsidian/app.asar') {
+            const usrLibObsidianMatch = mainAsar.match(/^\/usr\/lib\/obsidian\/[^/]+\.asar$/)
+            if (usrLibObsidianMatch) {
                 candidates.push('/usr/bin/obsidian')
             }
-            const optMatch = appAsar.match(/^(\/opt\/[^/]+)\/resources\/app\.asar$/)
+            const optMatch = mainAsar.match(/^(\/opt\/[^/]+)\/resources\/[^/]+\.asar$/)
             if (optMatch && optMatch[1]) {
                 candidates.push(`${optMatch[1]}/obsidian`)
             }
-            const usrLibMatch = appAsar.match(/^(\/usr\/lib\/[^/]+)\/app\.asar$/)
-            if (usrLibMatch && usrLibMatch[1] && appAsar !== '/usr/lib/obsidian/app.asar') {
+            const usrLibMatch = mainAsar.match(/^(\/usr\/lib\/[^/]+)\/[^/]+\.asar$/)
+            if (usrLibMatch && usrLibMatch[1] && !usrLibObsidianMatch) {
                 // Non-canonical usr/lib layout (e.g. forks): best guess is sibling bin entry
                 candidates.push(`${usrLibMatch[1]}/obsidian`)
             }
         }
 
         if (platform === 'win32') {
-            const winMatch = appAsar.match(/^(.+)[\\/]resources[\\/]app\.asar$/i)
+            const winMatch = mainAsar.match(/^(.+)[\\/]resources[\\/][^\\/]+\.asar$/i)
             if (winMatch && winMatch[1]) {
                 candidates.push(`${winMatch[1]}\\Obsidian.exe`)
             }
