@@ -37,42 +37,37 @@ export interface McpServerContext {
  * the Node.js StreamableHTTPServerTransport wrapper) because the
  * @hono/node-server conversion layer is incompatible with Electron's
  * Node.js environment.
+ *
+ * A fresh `McpServer` and transport are constructed per HTTP request, mirroring
+ * the SDK's `simpleStatelessStreamableHttp` example. Sharing a single
+ * `McpServer` across requests is unsafe with `@modelcontextprotocol/sdk` 1.26+:
+ * `Protocol.connect()` now throws `Already connected to a transport` when the
+ * underlying `_transport` slot is occupied (introduced by the GHSA-345p-7cg4-v4c7
+ * fix), and concurrent requests against a singleton can also leak transport
+ * state across callers.
  */
 export class McpServerWrapper {
-    private mcpServer: McpServer
     private context: McpServerContext
 
     constructor(context: McpServerContext) {
         this.context = context
-        this.mcpServer = new McpServer(
-            {
-                name: 'cli-rest-mcp',
-                version: '0.1.0'
-            },
-            {
-                capabilities: {
-                    tools: {}
-                }
-            }
-        )
-
-        this.registerTools()
     }
 
     /**
      * Handle an incoming MCP HTTP request.
-     * Creates a stateless transport per request, converts Node.js
-     * req/res to Web Standard Request/Response.
+     * Creates a fresh McpServer + stateless transport per request and tears
+     * them down once the response is written.
      */
     async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+        const mcpServer = this.createMcpServer()
         const transport = new WebStandardStreamableHTTPServerTransport({
             sessionIdGenerator: undefined,
             enableJsonResponse: true
         })
 
-        await this.mcpServer.connect(transport)
-
         try {
+            await mcpServer.connect(transport)
+
             // Parse body for POST requests
             let parsedBody: unknown
             if (req.method === 'POST') {
@@ -88,6 +83,7 @@ export class McpServerWrapper {
             await this.writeWebResponse(res, webResponse)
         } finally {
             await transport.close()
+            await mcpServer.close()
         }
     }
 
@@ -99,10 +95,33 @@ export class McpServerWrapper {
     }
 
     /**
-     * Close the MCP server.
+     * No long-lived resources to release — every request builds and tears down
+     * its own `McpServer` and transport. Kept so callers can treat the wrapper
+     * as a closeable resource alongside other server components.
      */
-    async close(): Promise<void> {
-        await this.mcpServer.close()
+    async close(): Promise<void> {}
+
+    /**
+     * Build a fresh McpServer with the two Code Mode tools registered.
+     */
+    private createMcpServer(): McpServer {
+        const mcpServer = new McpServer(
+            {
+                name: 'cli-rest-mcp',
+                version: '0.1.0'
+            },
+            {
+                capabilities: {
+                    tools: {}
+                }
+            }
+        )
+
+        this.registerSearchTool(mcpServer)
+        this.registerExecuteTool(mcpServer)
+        log('Registered 2 MCP tools (Code Mode pattern)', 'debug')
+
+        return mcpServer
     }
 
     /**
@@ -181,21 +200,8 @@ export class McpServerWrapper {
         res.end()
     }
 
-    /**
-     * Register exactly 2 MCP tools following the Code Mode pattern:
-     * - `search`: Progressive discovery of available commands
-     * - `execute`: Run any Obsidian CLI command
-     *
-     * This keeps the MCP tool count fixed regardless of how many CLI commands exist.
-     */
-    private registerTools(): void {
-        this.registerSearchTool()
-        this.registerExecuteTool()
-        log('Registered 2 MCP tools (Code Mode pattern)', 'debug')
-    }
-
-    private registerSearchTool(): void {
-        this.mcpServer.registerTool(
+    private registerSearchTool(mcpServer: McpServer): void {
+        mcpServer.registerTool(
             'search',
             {
                 title: 'Search commands',
@@ -262,8 +268,8 @@ export class McpServerWrapper {
         )
     }
 
-    private registerExecuteTool(): void {
-        this.mcpServer.registerTool(
+    private registerExecuteTool(mcpServer: McpServer): void {
+        mcpServer.registerTool(
             'execute',
             {
                 title: 'Execute command',
