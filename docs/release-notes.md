@@ -1,5 +1,12 @@
 # Release Notes
 
+## 1.1.4 (2026-05-15)
+
+### Bug Fixes
+
+- **all:** fixed Already connected to a transport issue
+- **all:** fixed CLI binary not detected on MacOS
+
 ## 1.1.3 (2026-05-15)
 
 ## 1.1.2 (2026-05-14)
