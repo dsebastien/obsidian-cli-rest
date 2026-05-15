@@ -1,4 +1,4 @@
-# Obsidian CLI REST
+# REST and MCP server
 
 Control your Obsidian vault programmatically. This plugin turns **all Obsidian CLI commands** into a local HTTP API and MCP server, letting you automate your workflow from scripts, tools, and AI assistants.
 
@@ -46,7 +46,7 @@ Once enabled, the server starts automatically on `http://127.0.0.1:27124`.
 
 ## Quick start
 
-Copy your API key from **Settings > Obsidian CLI REST > Security**, then start making requests:
+Copy your API key from **Settings > REST and MCP server > Security**, then start making requests:
 
 ```bash
 # List all files in your vault
@@ -139,7 +139,7 @@ To expose the server on your network, change the bind address to `0.0.0.0` in se
 
 ## Configuration
 
-All settings are accessible from **Settings > Obsidian CLI REST**.
+All settings are accessible from **Settings > REST and MCP server**.
 
 | Setting            | Default     | Description                                           |
 | ------------------ | ----------- | ----------------------------------------------------- |
