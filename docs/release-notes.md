@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.1.8 (2026-06-17)
+
+### Bug Fixes
+
+- **deps:** clear all dependency vulnerability advisories
+
 ## 1.1.7 (2026-06-17)
 
 ## 1.1.6 (2026-05-15)
