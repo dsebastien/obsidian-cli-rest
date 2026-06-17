@@ -125,6 +125,8 @@ Configure your MCP client with:
 - **Transport**: StreamableHTTP
 - **Auth**: Bearer token (your API key)
 
+Claude Desktop's config file only accepts stdio servers, so it needs the `mcp-remote` bridge instead of the URL directly. See [MCP integration](docs/mcp-integration.md) for client-specific setup.
+
 ## Security
 
 The plugin is designed with security in mind:

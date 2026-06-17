@@ -40,20 +40,31 @@ Use these connection details:
 
 ### Claude Desktop
 
-Add this to your Claude Desktop MCP configuration file:
+Claude Desktop's `claude_desktop_config.json` only accepts **stdio** servers (`command`/`args`). The `url` + `headers` remote format works in Claude Code but Claude Desktop silently skips it with the warning _"The following entries in claude_desktop_config.json are not valid MCP server configurations and were skipped: obsidian"_.
+
+To connect Claude Desktop to a StreamableHTTP server, bridge it with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) (requires [Node.js](https://nodejs.org/)):
 
 ```json
 {
     "mcpServers": {
         "obsidian": {
-            "url": "http://127.0.0.1:27124/mcp",
-            "headers": {
-                "Authorization": "Bearer YOUR_API_KEY"
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-remote",
+                "http://127.0.0.1:27124/mcp",
+                "--header",
+                "Authorization:${AUTH_HEADER}"
+            ],
+            "env": {
+                "AUTH_HEADER": "Bearer YOUR_API_KEY"
             }
         }
     }
 }
 ```
+
+The API key is passed through the `AUTH_HEADER` environment variable rather than written inline in `args`. This avoids an `mcp-remote` argument-parsing bug that mangles header values containing a space (such as `Bearer <key>`), which is especially likely to bite on Windows. Restart Claude Desktop fully after editing the config.
 
 ### Claude Code
 
@@ -281,6 +292,10 @@ The same safety controls apply to MCP tools as to REST API endpoints:
 3. Confirm the URL is correct: `http://127.0.0.1:27124/mcp`
 4. Check the API key is correct
 5. You should see exactly 2 tools: `search` and `execute`
+
+### "Not valid MCP server configurations and were skipped" (Claude Desktop)
+
+Claude Desktop only loads **stdio** servers from `claude_desktop_config.json`. A direct `url` + `headers` entry is silently skipped with this warning. Use the `mcp-remote` bridge configuration shown in the [Claude Desktop](#claude-desktop) setup section instead.
 
 ### Connection refused
 
