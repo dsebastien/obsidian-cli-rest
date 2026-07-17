@@ -2,7 +2,7 @@
     "id": "cli-rest-mcp",
     "name": "REST and MCP server",
     "description": "Exposes CLI commands as RESTful API endpoints and an MCP server for AI tool integration.",
-    "version": "1.1.8",
+    "version": "1.1.9",
     "minAppVersion": "1.4.0",
     "isDesktopOnly": true,
     "author": "Sébastien Dubois",

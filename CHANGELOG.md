@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9](https://github.com/dsebastien/obsidian-cli-rest/compare/1.1.8...1.1.9) (2026-07-17)
+
 ## [1.1.8](https://github.com/dsebastien/obsidian-cli-rest/compare/1.1.7...1.1.8) (2026-06-17)
 
 ### Bug Fixes
@@ -57,6 +59,7 @@ All notable changes to this project will be documented in this file.
 * **all:** initial implementation of the RESTful API and MCP server ([58f64da](https://github.com/dsebastien/obsidian-cli-rest/commit/58f64da873e44c579d8d57864e3186fe3552aacf))
 * **all:** updated ([1b35202](https://github.com/dsebastien/obsidian-cli-rest/commit/1b352020b8bab46a811c89d0f7e38bc93a742bdc))
 * **all:** updated docs ([b08189f](https://github.com/dsebastien/obsidian-cli-rest/commit/b08189faec4e8b3bc51b8f193544a4b007a38e75))
+
 
 
 
