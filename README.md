@@ -167,6 +167,7 @@ All settings are accessible from **Settings > REST and MCP server**.
 
 - **Issues**: [GitHub Issues](https://github.com/dsebastien/obsidian-cli-rest/issues)
 - **Author**: [Sebastien Dubois](https://dsebastien.net)
+- **What's new after updates.** After a plugin update, a one-time dialog shows the release notes you just received (including skipped versions) with ways to support development. Never shown on fresh installs or regular restarts.
 
 ## License
 
