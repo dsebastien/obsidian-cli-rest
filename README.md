@@ -1,5 +1,7 @@
 # REST and MCP server
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fdsebastien%2Fobsidian-cli-rest.svg)](https://mcptoplist.com/server/glama%2Fdsebastien%2Fobsidian-cli-rest)
+
 Control your Obsidian vault programmatically. This plugin turns **all Obsidian CLI commands** into a local HTTP API and MCP server, letting you automate your workflow from scripts, tools, and AI assistants.
 
 ## Why use this plugin?
