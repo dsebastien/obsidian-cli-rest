@@ -1,4 +1,4 @@
-import { registerWhatsNewDialog } from './whats-new'
+import { registerWhatsNewView } from './whats-new'
 import { Notice, Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, pluginSettingsSchema } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
@@ -58,7 +58,7 @@ export class CliRestMcpPlugin extends Plugin {
 
     override async onload(): Promise<void> {
         // Must run before anything can call saveData (fresh-install detection)
-        registerWhatsNewDialog(this)
+        registerWhatsNewView(this)
         log('Initializing', 'debug')
         await this.loadSettings()
 
