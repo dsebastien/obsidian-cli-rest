@@ -380,15 +380,33 @@ export class CliRestMcpPlugin extends Plugin {
         log('Settings saved', 'debug', this.settings)
     }
 
+    /** Serializes settings writes; see updateSettings. */
+    private settingsWriteChain: Promise<void> = Promise.resolve()
+
     /**
      * Apply a mutation to the settings (via immer) and persist the result.
+     *
      * Persist-then-commit: memory is swapped only after saveData() succeeds,
      * so the declarative tab's rejection-based rollback reads the on-disk
      * truth rather than an optimistic mutation that never landed.
+     *
+     * Serialized: writes queue behind one another and each mutation derives
+     * from the PREVIOUS COMMITTED state. Without this, two overlapping calls
+     * would both produce() from the same base across the save await, and the
+     * second commit would silently drop the first edit (external review,
+     * 2026-08-21 — on this plugin that race could start the server on a
+     * stale bind address).
      */
-    async updateSettings(mutator: (draft: Draft<PluginSettings>) => void): Promise<void> {
-        const next = produce(this.settings, mutator)
-        await this.saveData(next)
-        this.settings = next
+    updateSettings(mutator: (draft: Draft<PluginSettings>) => void): Promise<void> {
+        const run = async (): Promise<void> => {
+            const next = produce(this.settings, mutator)
+            await this.saveData(next)
+            this.settings = next
+        }
+        // Run after the previous write regardless of its outcome, but hand
+        // each caller only its own failure.
+        const p = this.settingsWriteChain.then(run, run)
+        this.settingsWriteChain = p.catch(() => {})
+        return p
     }
 }
