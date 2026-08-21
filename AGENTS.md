@@ -130,7 +130,7 @@ This is MANDATORY. The watch process catches type errors immediately as you edit
 Optionally, also run tests in watch mode:
 
 ```bash
-bun test --watch
+bun run test:watch
 ```
 
 After editing code, always run the formatter and linter:

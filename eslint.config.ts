@@ -27,6 +27,8 @@ export default tseslint.config(
             globals: {
                 ...globals.node,
                 ...globals.browser,
+                // Tests and build tooling run under the Bun runtime
+                Bun: 'readonly',
                 // Obsidian global functions
                 createDiv: 'readonly',
                 createEl: 'readonly',
@@ -56,8 +58,33 @@ export default tseslint.config(
             'no-prototype-builtins': 'off',
             // Allow confirm for delete confirmations
             'no-alert': 'off',
-            // Disable sentence case rule - it has false positives for already-correct text
-            'obsidianmd/ui/sentence-case': 'off'
+            // Never disable obsidianmd/* rules here: the community catalog
+            // reviewer runs its own ruleset against the git archive, so a
+            // local disable only hides the finding until submission.
+            // NOTE: brands and acronyms are enforced BOTH ways — listing one
+            // forces every prose occurrence to that exact casing.
+            'obsidianmd/ui/sentence-case': [
+                'error',
+                {
+                    brands: [
+                        'Knowii',
+                        'X',
+                        'GitHub Sponsors',
+                        'Sébastien Dubois',
+                        'dSebastien',
+                        'Obsidian'
+                    ],
+                    acronyms: ['API', 'REST', 'MCP', 'CLI', 'CORS', 'URL', 'HTTP', 'AI'],
+                    ignoreRegex: [
+                        // Single-token literals are values, not sentences.
+                        '^\\S+$',
+                        // URL paths: acronyms would rewrite /api/ to /API/
+                        '/\\S+',
+                        // Placeholder examples starting with e.g.
+                        '^e\\.g\\.,'
+                    ]
+                }
+            ]
         }
     }
 )

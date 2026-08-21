@@ -38,7 +38,7 @@ let sharedHttpServer: HttpServerWrapper | null = null
 const CLI_COMMAND_REGISTRY_NAMES = new Set(CLI_COMMAND_REGISTRY.map((c) => c.command))
 
 export class CliRestMcpPlugin extends Plugin {
-    settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+    override settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
     cliStatus: CliAvailabilityResult = {
         available: false,
         binaryPath: '',

@@ -88,7 +88,7 @@ bun run tsc:watch
 Optionally, run tests in watch mode:
 
 ```bash
-bun test --watch
+bun run test:watch
 ```
 
 ### Code Quality
