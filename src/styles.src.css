@@ -91,3 +91,16 @@
 .cli-rest-mcp-whats-new-body .cli-rest-mcp-whats-new-links .setting-item-description {
     @apply pr-3;
 }
+
+/* Declarative settings: rows that render a full-width section (warning,
+   support links) instead of the standard name/control layout. */
+.cli-rest-settings-embed {
+    @apply block;
+}
+
+/* API key display field (read-only) */
+.cli-rest-api-key-field {
+    @apply font-mono;
+    width: 300px;
+    font-size: 11px;
+}

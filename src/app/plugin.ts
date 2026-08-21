@@ -379,4 +379,16 @@ export class CliRestMcpPlugin extends Plugin {
         await this.saveData(this.settings)
         log('Settings saved', 'debug', this.settings)
     }
+
+    /**
+     * Apply a mutation to the settings (via immer) and persist the result.
+     * Persist-then-commit: memory is swapped only after saveData() succeeds,
+     * so the declarative tab's rejection-based rollback reads the on-disk
+     * truth rather than an optimistic mutation that never landed.
+     */
+    async updateSettings(mutator: (draft: Draft<PluginSettings>) => void): Promise<void> {
+        const next = produce(this.settings, mutator)
+        await this.saveData(next)
+        this.settings = next
+    }
 }
