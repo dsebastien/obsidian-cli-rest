@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0](https://github.com/dsebastien/obsidian-cli-rest/compare/1.4.0...2.0.0) (2026-08-28)
+
+### ⚠ BREAKING CHANGES
+
+* **plugin:** minAppVersion moves 1.8.7 -> 1.13.0.
+
+Ports the imperative settings tab to the declarative API following the
+fleet recipe. 10 scalars become control definitions bridged through a
+new Plugin.updateSettings (persist-then-commit — memory swaps only
+after saveData succeeds, replacing the tab-private updateSetting that
+mutated memory first). setControlValue rejects on failure, including
+type mismatches and out-of-range numbers.
+
+Live state stays imperative: server status (Start/Stop), CLI status
+(Recheck) and the API key row (Copy / Regenerate) are render rows
+refreshed via update(); "Listening on" and the 0.0.0.0 security warning
+are conditionally-visible definitions re-evaluated per render.
+
+Parity notes: blockedCommands keeps its exact split/trim/filter
+normalization; defaultVault is deliberately not trimmed; port and
+requestTimeout mirror the zod schema's bounds inline with NO
+defaultValue (a cleared field is refused, not silently reset). The API
+key field's inline setCssStyles moved to a CSS class.
+
+Guard spec + AGENTS.md "Declarative settings" ported from the template.
+
+Settings pane rendering needs eyes-on verification in Obsidian.
+
+### Features
+
+* **plugin:** declare settings via getSettingDefinitions (Obsidian 1.13) ([b8008b3](https://github.com/dsebastien/obsidian-cli-rest/commit/b8008b393148607cff7af1fd8f6fa196ed562456))
+* **plugin:** show what's new in a tab instead of a modal dialog ([51cbcb7](https://github.com/dsebastien/obsidian-cli-rest/commit/51cbcb76bf238eb666b953967cdda3b6d92979b2))
+* **plugin:** surface support CTAs everywhere users can see them ([dc57bae](https://github.com/dsebastien/obsidian-cli-rest/commit/dc57bae4916b338c4e270b908a8ec96f48b64756))
+
+### Bug Fixes
+
+* **build:** port template catalog-reviewer + toolchain fixes (2.8.0+) ([7457ed0](https://github.com/dsebastien/obsidian-cli-rest/commit/7457ed0ae767aeaea4a578e16538df951a563e90))
+* **plugin:** bring back the follow button, and stop lying about brands ([6640bba](https://github.com/dsebastien/obsidian-cli-rest/commit/6640bba96a6d0ecce2508e4b8cb5d182ee0c511f))
+* **plugin:** serialize settings writes — overlapping edits lost data ([09a8dd0](https://github.com/dsebastien/obsidian-cli-rest/commit/09a8dd07ee080ad986ea51ebd49a12c04d8a2409))
+
 ## [1.4.0](https://github.com/dsebastien/obsidian-cli-rest/compare/1.3.0...1.4.0) (2026-07-29)
 
 ### Features
@@ -77,6 +117,7 @@ All notable changes to this project will be documented in this file.
 * **all:** initial implementation of the RESTful API and MCP server ([58f64da](https://github.com/dsebastien/obsidian-cli-rest/commit/58f64da873e44c579d8d57864e3186fe3552aacf))
 * **all:** updated ([1b35202](https://github.com/dsebastien/obsidian-cli-rest/commit/1b352020b8bab46a811c89d0f7e38bc93a742bdc))
 * **all:** updated docs ([b08189f](https://github.com/dsebastien/obsidian-cli-rest/commit/b08189faec4e8b3bc51b8f193544a4b007a38e75))
+
 
 
 

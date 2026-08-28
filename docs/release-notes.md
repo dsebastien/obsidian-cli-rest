@@ -1,5 +1,45 @@
 # Release Notes
 
+## 2.0.0 (2026-08-28)
+
+### ⚠ BREAKING CHANGES
+
+- **plugin:** minAppVersion moves 1.8.7 -> 1.13.0.
+
+Ports the imperative settings tab to the declarative API following the
+fleet recipe. 10 scalars become control definitions bridged through a
+new Plugin.updateSettings (persist-then-commit — memory swaps only
+after saveData succeeds, replacing the tab-private updateSetting that
+mutated memory first). setControlValue rejects on failure, including
+type mismatches and out-of-range numbers.
+
+Live state stays imperative: server status (Start/Stop), CLI status
+(Recheck) and the API key row (Copy / Regenerate) are render rows
+refreshed via update(); "Listening on" and the 0.0.0.0 security warning
+are conditionally-visible definitions re-evaluated per render.
+
+Parity notes: blockedCommands keeps its exact split/trim/filter
+normalization; defaultVault is deliberately not trimmed; port and
+requestTimeout mirror the zod schema's bounds inline with NO
+defaultValue (a cleared field is refused, not silently reset). The API
+key field's inline setCssStyles moved to a CSS class.
+
+Guard spec + AGENTS.md "Declarative settings" ported from the template.
+
+Settings pane rendering needs eyes-on verification in Obsidian.
+
+### Features
+
+- **plugin:** declare settings via getSettingDefinitions (Obsidian 1.13)
+- **plugin:** show what's new in a tab instead of a modal dialog
+- **plugin:** surface support CTAs everywhere users can see them
+
+### Bug Fixes
+
+- **build:** port template catalog-reviewer + toolchain fixes (2.8.0+)
+- **plugin:** bring back the follow button, and stop lying about brands
+- **plugin:** serialize settings writes — overlapping edits lost data
+
 ## 1.4.0 (2026-07-29)
 
 ### Features
