@@ -424,8 +424,18 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                     name: 'Follow me on X',
                     desc: 'Sébastien Dubois (@dSebastien)',
                     searchable: false,
-                    action: (): void => {
-                        window.open('https://x.com/dSebastien')
+                    // A CTA button, not a row `action:`. `action:` makes the WHOLE
+                    // row clickable and draws no button at all, so this row lost
+                    // the button it used to have in the declarative port.
+                    render: (setting): void => {
+                        setting.addButton((button) => {
+                            button
+                                .setCta()
+                                .setButtonText('Follow me on X')
+                                .onClick(() => {
+                                    window.open('https://x.com/dSebastien')
+                                })
+                        })
                     }
                 },
                 {

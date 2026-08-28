@@ -3,6 +3,16 @@ import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import globals from 'globals'
 import obsidianmd from 'eslint-plugin-obsidianmd'
+// Passing `brands` REPLACES the plugin's default list rather than extending it
+// (see sentenceCaseUtil.js: `options?.brands ?? DEFAULT_BRANDS`). Listing only
+// this plugin's own names silently strips "Obsidian", "Git", "Markdown",
+// "GitHub", "Windows" and the other 40-odd defaults — and the community catalog
+// reviewer, which runs the plugin's own ruleset, keeps enforcing every one of
+// them. The loss shows up as findings you never see locally.
+// Deep path because the package exports only its default plugin object; it is
+// pinned exactly, and a break here is a loud module-resolution error, never a
+// silent shrinking of the list.
+import { DEFAULT_BRANDS } from 'eslint-plugin-obsidianmd/dist/lib/rules/ui/brands.js'
 
 export default tseslint.config(
     eslint.configs.recommended,
@@ -67,6 +77,7 @@ export default tseslint.config(
                 'error',
                 {
                     brands: [
+                        ...DEFAULT_BRANDS,
                         'Knowii',
                         'X',
                         'GitHub Sponsors',
