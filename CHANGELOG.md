@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0](https://github.com/dsebastien/obsidian-cli-rest/compare/2.0.0...2.1.0) (2026-09-22)
+
+### Features
+
+* **build:** fail the build on a lockfile the catalog review cannot parse ([3849fae](https://github.com/dsebastien/obsidian-cli-rest/commit/3849fae49b586abb098c7c814094322d1bcf58b9))
+* **build:** make the rule floor check that it is still wired in ([c2171ed](https://github.com/dsebastien/obsidian-cli-rest/commit/c2171ed2ca8b4862d43b5a41b0cb9040e5886390))
+* **build:** refuse commits that loosen the rules instead of fixing the finding ([dbee567](https://github.com/dsebastien/obsidian-cli-rest/commit/dbee567928e74221a89ea3f84123981588f1fa51))
+
+### Bug Fixes
+
+* **deps:** move the fast-uri override off the vulnerable line ([3cef64a](https://github.com/dsebastien/obsidian-cli-rest/commit/3cef64a76aff4f0d41d6761acf837f80c5cae0a8))
+* **deps:** move the js-yaml override off the vulnerable line ([56869ce](https://github.com/dsebastien/obsidian-cli-rest/commit/56869ce7e6e313a0940fd2924401c7a85a756036))
+* **plugin:** apply a regenerated API key right away instead of at the next restart ([191563b](https://github.com/dsebastien/obsidian-cli-rest/commit/191563b99738fe13926de2c4a8f096256074113c))
+
 ## [2.0.0](https://github.com/dsebastien/obsidian-cli-rest/compare/1.4.0...2.0.0) (2026-08-28)
 
 ### ⚠ BREAKING CHANGES
@@ -117,6 +131,7 @@ Settings pane rendering needs eyes-on verification in Obsidian.
 * **all:** initial implementation of the RESTful API and MCP server ([58f64da](https://github.com/dsebastien/obsidian-cli-rest/commit/58f64da873e44c579d8d57864e3186fe3552aacf))
 * **all:** updated ([1b35202](https://github.com/dsebastien/obsidian-cli-rest/commit/1b352020b8bab46a811c89d0f7e38bc93a742bdc))
 * **all:** updated docs ([b08189f](https://github.com/dsebastien/obsidian-cli-rest/commit/b08189faec4e8b3bc51b8f193544a4b007a38e75))
+
 
 
 

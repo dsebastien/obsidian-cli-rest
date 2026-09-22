@@ -1,5 +1,19 @@
 # Release Notes
 
+## 2.1.0 (2026-09-22)
+
+### Features
+
+- **build:** fail the build on a lockfile the catalog review cannot parse
+- **build:** make the rule floor check that it is still wired in
+- **build:** refuse commits that loosen the rules instead of fixing the finding
+
+### Bug Fixes
+
+- **deps:** move the fast-uri override off the vulnerable line
+- **deps:** move the js-yaml override off the vulnerable line
+- **plugin:** apply a regenerated API key right away instead of at the next restart
+
 ## 2.0.0 (2026-08-28)
 
 ### ⚠ BREAKING CHANGES
