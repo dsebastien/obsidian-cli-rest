@@ -219,6 +219,18 @@ export class CliRestMcpPlugin extends Plugin {
         this.updateStatusBar()
     }
 
+    /**
+     * Push the current API key into a running server.
+     *
+     * Without this, the key captured when the server started stays in force and
+     * a regenerated key silently does nothing until the next restart — including
+     * the case where the stale key is the empty string, which disables auth
+     * entirely rather than rejecting requests.
+     */
+    syncServerAuth(): void {
+        this.httpServer?.updateApiKey(this.settings.apiKey)
+    }
+
     async stopServer(): Promise<void> {
         if (this.mcpServer) {
             await this.mcpServer.close()

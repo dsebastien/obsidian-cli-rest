@@ -120,6 +120,18 @@ export class HttpServerWrapper {
         this.options.context = context
     }
 
+    /**
+     * Rebind the API key the auth middleware compares incoming requests against.
+     *
+     * A key change does not invalidate the listening socket, so it is applied in
+     * place rather than by restarting: a restart calls closeAllConnections() and
+     * would drop every in-flight MCP session along with it. Takes effect on the
+     * next request.
+     */
+    updateApiKey(apiKey: string): void {
+        this.options.apiKey = apiKey
+    }
+
     private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
         const method = req.method ?? 'GET'
         const url = req.url ?? '/'

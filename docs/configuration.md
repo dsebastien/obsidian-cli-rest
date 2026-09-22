@@ -62,9 +62,9 @@ You can copy the API key in two ways:
 
 ### Regenerating the key
 
-Select **Regenerate** in the Security section of plugin settings. A new key is generated immediately. You will need to update any scripts or MCP clients using the old key.
+Select **Regenerate** in the Security section of plugin settings. A new key is generated and applied immediately — a running server starts accepting the new key and rejecting the old one on the next request, with no restart and without dropping live MCP sessions.
 
-If the server is running when you regenerate, restart it for the new key to take effect.
+You will need to update any scripts or MCP clients using the old key.
 
 ### Authentication enforcement
 

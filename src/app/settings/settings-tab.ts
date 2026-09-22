@@ -358,7 +358,8 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                     await this.plugin.updateSettings((draft) => {
                         draft.apiKey = generateApiKey()
                     })
-                    new Notice('API key regenerated. Restart server to apply.')
+                    this.plugin.syncServerAuth()
+                    new Notice('API key regenerated and applied. Update your clients.')
                     this.update()
                 })
             })

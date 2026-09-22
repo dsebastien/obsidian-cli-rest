@@ -20,6 +20,7 @@ When a new business rule is mentioned:
 - CLI execution MUST use `child_process.execFile` (not `exec`) to prevent shell injection.
 - Dangerous commands (`eval`, `restart`, `devtools`, `dev:*`, `command`, `reload`, `plugins:restrict`) require `allowDangerousCommands` setting.
 - API key is auto-generated on first plugin enable via `crypto.randomBytes(32)`.
+- A regenerated API key MUST take effect on a running server without a restart. The key is rebound in place (`HttpServerWrapper.updateApiKey`) because the listening socket does not depend on it, and a restart would force-close every in-flight MCP session. A key left stale is a security hole, not just an inconvenience: if the stale value is the empty string, auth stays disabled.
 
 ## CLI Requirement
 
