@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1](https://github.com/dsebastien/obsidian-cli-rest/compare/2.1.0...2.1.1) (2026-09-23)
+
+### Bug Fixes
+
+* **build:** harden the release path from the template ([7980b1f](https://github.com/dsebastien/obsidian-cli-rest/commit/7980b1f4794e72024e71ba9461d8ec9d630f58ae))
+* **build:** rebuild versions.json from the published releases ([7a588bc](https://github.com/dsebastien/obsidian-cli-rest/commit/7a588bca509c6cd21f64298ff70004a6854e591a))
+* **plugin:** never let an unloaded instance bind or keep the port ([aaeb3eb](https://github.com/dsebastien/obsidian-cli-rest/commit/aaeb3eb62a41a32893826e743be5b76c3e8418b8))
+
 ## [2.1.0](https://github.com/dsebastien/obsidian-cli-rest/compare/2.0.0...2.1.0) (2026-09-22)
 
 ### Features
@@ -131,6 +139,7 @@ Settings pane rendering needs eyes-on verification in Obsidian.
 * **all:** initial implementation of the RESTful API and MCP server ([58f64da](https://github.com/dsebastien/obsidian-cli-rest/commit/58f64da873e44c579d8d57864e3186fe3552aacf))
 * **all:** updated ([1b35202](https://github.com/dsebastien/obsidian-cli-rest/commit/1b352020b8bab46a811c89d0f7e38bc93a742bdc))
 * **all:** updated docs ([b08189f](https://github.com/dsebastien/obsidian-cli-rest/commit/b08189faec4e8b3bc51b8f193544a4b007a38e75))
+
 
 
 

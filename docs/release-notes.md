@@ -1,5 +1,13 @@
 # Release Notes
 
+## 2.1.1 (2026-09-23)
+
+### Bug Fixes
+
+- **build:** harden the release path from the template
+- **build:** rebuild versions.json from the published releases
+- **plugin:** never let an unloaded instance bind or keep the port
+
 ## 2.1.0 (2026-09-22)
 
 ### Features
