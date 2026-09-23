@@ -1,3 +1,4 @@
+import { ServerController } from './services/server-controller'
 import { registerWhatsNewView } from './whats-new'
 import { Notice, Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, pluginSettingsSchema } from './types/plugin-settings.intf'
@@ -26,14 +27,6 @@ import {
     registerCopyDocsUrlCommand
 } from './commands/toggle-server'
 
-/**
- * Module-level reference to the active HTTP server.
- * Survives across plugin instance reloads within the same Electron process,
- * allowing a new instance to properly close the previous instance's server
- * even when onunload() can't be awaited.
- */
-let sharedHttpServer: HttpServerWrapper | null = null
-
 /** Pre-computed set of static registry command names for quick lookup during discovery. */
 const CLI_COMMAND_REGISTRY_NAMES = new Set(CLI_COMMAND_REGISTRY.map((c) => c.command))
 
@@ -46,7 +39,12 @@ export class CliRestMcpPlugin extends Plugin {
         error: 'Not checked yet'
     }
 
-    private httpServer: HttpServerWrapper | null = null
+    /** Owns the HTTP server; disposed on unload so a late start cannot bind. */
+    private readonly serverController = new ServerController<HttpServerWrapper>()
+
+    private get httpServer(): HttpServerWrapper | null {
+        return this.serverController.server
+    }
     private mcpServer: McpServerWrapper | null = null
     private statusBarEl: HTMLElement | null = null
     /**
@@ -106,12 +104,18 @@ export class CliRestMcpPlugin extends Plugin {
     private async initializeInBackground(): Promise<void> {
         try {
             this.cliStatus = await checkCliAvailability()
+            if (this.serverController.isDisposed) {
+                return
+            }
             if (!this.cliStatus.available) {
                 new Notice(
                     'REST and MCP server: CLI binary not found. Install the Obsidian CLI to use this plugin.'
                 )
             } else {
                 await this.discoverCommands()
+                if (this.serverController.isDisposed) {
+                    return
+                }
             }
 
             // If the user manually started the server before the probe finished,
@@ -135,7 +139,11 @@ export class CliRestMcpPlugin extends Plugin {
     }
 
     override onunload(): void {
-        void this.stopServer()
+        // Dispose first: a start still in flight in the background must not
+        // bind the port after this instance is gone.
+        void this.mcpServer?.close()
+        this.mcpServer = null
+        void this.serverController.dispose()
     }
 
     /**
@@ -160,6 +168,9 @@ export class CliRestMcpPlugin extends Plugin {
                         'warn'
                     )
                     await this.delay(RETRY_DELAY_MS)
+                    if (this.serverController.isDisposed) {
+                        return
+                    }
                 } else {
                     log(`Auto-start failed: ${msg}`, 'error')
                     new Notice(`REST and MCP server: Failed to start server: ${msg}`)
@@ -174,14 +185,10 @@ export class CliRestMcpPlugin extends Plugin {
     }
 
     async startServer(): Promise<void> {
-        await this.stopServer()
-
-        // Close any orphaned server from a previous plugin instance
-        if (sharedHttpServer?.isRunning) {
-            log('Closing orphaned server from previous instance', 'debug')
-            await sharedHttpServer.stop()
+        if (this.serverController.isDisposed) {
+            return
         }
-        sharedHttpServer = null
+        await this.stopServer()
 
         // Enforce API key when binding to all interfaces
         if (this.settings.bindAddress === '0.0.0.0' && !this.settings.apiKey) {
@@ -200,21 +207,24 @@ export class CliRestMcpPlugin extends Plugin {
             mcpServer = new McpServerWrapper(context)
         }
 
-        // Create HTTP server (don't assign to this.httpServer until start succeeds)
-        const httpServer = new HttpServerWrapper({
-            port: this.settings.port,
-            bindAddress: this.settings.bindAddress,
-            apiKey: this.settings.apiKey,
-            enableCors: this.settings.enableCors,
-            context,
-            mcpHandler: mcpServer ? (req, res) => mcpServer.handleRequest(req, res) : undefined
-        })
-
-        await httpServer.start()
-
-        // Only assign after successful start to avoid orphaning
-        this.httpServer = httpServer
-        sharedHttpServer = httpServer
+        // The controller closes a server a dead predecessor left running,
+        // binds, and records the new one only if this instance is still loaded.
+        const started = await this.serverController.start(
+            () =>
+                new HttpServerWrapper({
+                    port: this.settings.port,
+                    bindAddress: this.settings.bindAddress,
+                    apiKey: this.settings.apiKey,
+                    enableCors: this.settings.enableCors,
+                    context,
+                    mcpHandler: mcpServer
+                        ? (req, res) => mcpServer.handleRequest(req, res)
+                        : undefined
+                })
+        )
+        if (!started) {
+            return
+        }
         this.mcpServer = mcpServer
         this.updateStatusBar()
     }
@@ -237,10 +247,7 @@ export class CliRestMcpPlugin extends Plugin {
             this.mcpServer = null
         }
 
-        if (this.httpServer) {
-            await this.httpServer.stop()
-            this.httpServer = null
-        }
+        await this.serverController.stop()
 
         this.updateStatusBar()
     }
