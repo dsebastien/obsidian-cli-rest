@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { routeRequest } from './request-router'
 import type { RouterContext } from './request-router'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { parseApiResponse } from '../../../test/api-response-body'
+import type { ApiErrorResponse } from '../domain/api-response'
 import { resetDiscoveredCommands } from '../domain/cli-command-registry'
 
 afterEach(() => {
@@ -112,7 +114,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.ok).toBe(true)
         expect(body.command).toBe('health')
     })
@@ -123,7 +125,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody()) as { ok: boolean; stdout: string }
+        const body = parseApiResponse(getBody()) as { ok: boolean; stdout: string }
         expect(body.ok).toBe(true)
         const commands = JSON.parse(body.stdout) as unknown[]
         expect(commands.length).toBeGreaterThan(0)
@@ -217,7 +219,7 @@ describe('routeRequest', () => {
             const handled = await routeRequest(req, res, createContext())
             expect(handled).toBe(true)
             expect(getStatusCode()).toBe(403)
-            const body = JSON.parse(getBody())
+            const body = parseApiResponse<ApiErrorResponse>(getBody())
             expect(body.ok).toBe(false)
             expect(body.error).toContain('allowDangerousCommands')
             expect(body.error).toContain(command)
@@ -263,7 +265,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, ctx)
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(403)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse<ApiErrorResponse>(getBody())
         expect(body.error).toContain('blocked')
     })
 
@@ -316,7 +318,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.ok).toBe(true)
         expect(body.command).toBe('version')
         expect(body.stdout).toContain('version')
@@ -328,7 +330,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.command).toBe('property:set')
     })
 
@@ -349,7 +351,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(405)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse<ApiErrorResponse>(getBody())
         expect(body.error).toContain('Only POST is accepted')
     })
 
@@ -359,7 +361,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(403)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse<ApiErrorResponse>(getBody())
         expect(body.error).toContain('allowDangerousCommands')
     })
 
@@ -384,7 +386,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, ctx)
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(403)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse<ApiErrorResponse>(getBody())
         expect(body.error).toContain('blocked')
     })
 
@@ -411,7 +413,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.ok).toBe(true)
         expect(body.command).toBe('cli-rest:rest-url')
         expect(body.stdout).toBe('http://127.0.0.1:27124/api/v1')
@@ -423,7 +425,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, createContext())
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.ok).toBe(true)
         expect(body.command).toBe('cli-rest:mcp-url')
         expect(body.stdout).toBe('http://127.0.0.1:27124/mcp')
@@ -443,7 +445,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, ctx)
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.ok).toBe(true)
         expect(body.stdout).toBe('http://127.0.0.1:27124/api/v1')
     })
@@ -457,7 +459,7 @@ describe('routeRequest', () => {
         const handled = await routeRequest(req, res, ctx)
         expect(handled).toBe(true)
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.stdout).toBe('http://0.0.0.0:8080/mcp')
     })
 })

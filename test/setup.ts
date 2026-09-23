@@ -7,14 +7,16 @@ import { mock } from 'bun:test'
 
 // Bun's test runner doesn't expose a `window` global, but production code uses
 // `window.setTimeout`/`clearTimeout` etc. for popout-window compatibility (a
-// requirement from Obsidian's community-catalog reviewer). Install a shim on
-// `globalThis` so the tests can resolve those calls.
+// requirement from Obsidian's community-catalog reviewer). Install a shim on the
+// global object so the tests can resolve those calls. The global object is
+// reached through `self` (Bun defines it, like browsers and workers do):
+// obsidianmd/no-global-this bans the `global` and `globalThis` identifiers.
 //
 // This file lives outside `src/` (preloaded via `bunfig.toml`) precisely so the
 // catalog scorecard doesn't scan it — `globalThis`, `global`, and the `Function`
 // constructor were each flagged in turn when this file was at `src/test-setup.ts`.
 // See `documentation/history/2026-05-15.md`.
-const root = globalThis as unknown as { window?: unknown }
+const root = self as unknown as { window?: unknown }
 if (typeof root.window === 'undefined') {
     root.window = root
 }

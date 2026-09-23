@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { sendSuccess, sendError, handleCorsPreflightIfNeeded } from './response-builder'
 import type { ServerResponse } from 'node:http'
+import { parseApiResponse } from '../../../test/api-response-body'
+import type { ApiErrorResponse } from '../domain/api-response'
 
 function createMockRes(): {
     res: ServerResponse
@@ -49,7 +51,7 @@ describe('sendSuccess', () => {
             false
         )
         expect(getStatusCode()).toBe(200)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.ok).toBe(true)
         expect(body.command).toBe('version')
         expect(body.stdout).toBe('1.0.0')
@@ -91,7 +93,7 @@ describe('sendError', () => {
         const { res, getStatusCode, getBody } = createMockRes()
         sendError(res, 404, 'Not found', false)
         expect(getStatusCode()).toBe(404)
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse<ApiErrorResponse>(getBody())
         expect(body.ok).toBe(false)
         expect(body.error).toBe('Not found')
     })
@@ -103,7 +105,7 @@ describe('sendError', () => {
             exitCode: 1,
             stderr: 'not found'
         })
-        const body = JSON.parse(getBody())
+        const body = parseApiResponse(getBody())
         expect(body.command).toBe('search')
         expect(body.exitCode).toBe(1)
         expect(body.stderr).toBe('not found')
