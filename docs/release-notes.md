@@ -1,5 +1,14 @@
 # Release Notes
 
+## 2.1.3 (2026-09-28)
+
+### Bug Fixes
+
+- **plugin:** let an unloaded instance neither save, report nor retry
+- **plugin:** never listen beyond loopback without an API key
+- **plugin:** run server starts and stops one at a time
+- **plugin:** write nothing once unloaded and treat a blank key as missing
+
 ## 2.1.2 (2026-09-28)
 
 ### Bug Fixes

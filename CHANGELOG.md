@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.3](https://github.com/dsebastien/obsidian-cli-rest/compare/2.1.2...2.1.3) (2026-09-28)
+
+### Bug Fixes
+
+* **plugin:** let an unloaded instance neither save, report nor retry ([ea418f7](https://github.com/dsebastien/obsidian-cli-rest/commit/ea418f7f479291ac9e0adbf558185e126cec333b))
+* **plugin:** never listen beyond loopback without an API key ([08b6fc1](https://github.com/dsebastien/obsidian-cli-rest/commit/08b6fc18d5d5972abd8180d6db15f673e8b5780e))
+* **plugin:** run server starts and stops one at a time ([1db58cb](https://github.com/dsebastien/obsidian-cli-rest/commit/1db58cb3f8363cf1324c77bf275e091ef53eca7c))
+* **plugin:** write nothing once unloaded and treat a blank key as missing ([e31d554](https://github.com/dsebastien/obsidian-cli-rest/commit/e31d55470cddc919c5efe07be64818cdd0316257))
+
 ## [2.1.2](https://github.com/dsebastien/obsidian-cli-rest/compare/2.1.1...2.1.2) (2026-09-28)
 
 ### Bug Fixes
@@ -145,6 +154,7 @@ Settings pane rendering needs eyes-on verification in Obsidian.
 * **all:** initial implementation of the RESTful API and MCP server ([58f64da](https://github.com/dsebastien/obsidian-cli-rest/commit/58f64da873e44c579d8d57864e3186fe3552aacf))
 * **all:** updated ([1b35202](https://github.com/dsebastien/obsidian-cli-rest/commit/1b352020b8bab46a811c89d0f7e38bc93a742bdc))
 * **all:** updated docs ([b08189f](https://github.com/dsebastien/obsidian-cli-rest/commit/b08189faec4e8b3bc51b8f193544a4b007a38e75))
+
 
 
 
