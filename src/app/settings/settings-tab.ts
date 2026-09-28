@@ -274,7 +274,7 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                     name: 'Security warning',
                     searchable: false,
                     visible: (): boolean => this.plugin.settings.bindAddress === '0.0.0.0',
-                    render: (setting): void => {
+                    render: (setting): (() => void) => {
                         setting.settingEl.addClass('cli-rest-settings-embed')
                         setting.infoEl.remove()
                         const warningEl = setting.settingEl.createDiv({
@@ -284,6 +284,9 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                         warningEl.createSpan({
                             text: 'Binding to 0.0.0.0 exposes the server to your network. An API key is required and enforced.'
                         })
+                        // update() (Start/Stop server, Recheck) re-runs this
+                        // hook on the SAME row and only resets its control area
+                        return () => warningEl.remove()
                     }
                 },
                 {
@@ -442,12 +445,17 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                 {
                     name: 'Support',
                     searchable: false,
-                    render: (setting): void => {
+                    render: (setting): (() => void) => {
                         setting.settingEl.addClass('cli-rest-settings-embed')
                         setting.infoEl.remove()
-                        renderSupportSection(setting.settingEl, (el) => {
+                        // In a wrapper removed by the returned cleanup: update() re-runs
+                        // this hook on the SAME row and only resets its control area, so
+                        // content appended straight to settingEl would pile up.
+                        const blockEl = setting.settingEl.createDiv()
+                        renderSupportSection(blockEl, (el) => {
                             this.renderBuyMeACoffeeBadge(el)
                         })
+                        return () => blockEl.remove()
                     }
                 }
             ]
