@@ -20,10 +20,21 @@ export interface StartableServer extends StoppableServer {
  * an unloaded instance could bind the port with its stale settings (its API
  * key included) after the next instance had started, and keep it while the
  * plugin was disabled.
+ *
+ * Start and stop are serialised: each runs only after the previous one has
+ * settled. Two overlapping starts would otherwise both see no current server,
+ * both bind, and the first assignment would be overwritten, leaving a server
+ * nothing stops (the settings pane restarts on a port change while an
+ * auto-start may still be running).
  */
 export class ServerController<S extends StartableServer> {
     private current: S | null = null
     private disposed = false
+    /**
+     * The last queued start or stop. The next operation runs once it settles,
+     * fulfilled or rejected, so a failed bind never blocks the queue.
+     */
+    private queue: Promise<unknown> = Promise.resolve()
 
     constructor(private readonly host: object = window) {}
 
@@ -36,8 +47,28 @@ export class ServerController<S extends StartableServer> {
     }
 
     /** Starts a server from `create`; null when disposed before it could run. */
-    async start(create: () => S): Promise<S | null> {
-        await this.stop()
+    start(create: () => S): Promise<S | null> {
+        return this.enqueue(() => this.startNow(create))
+    }
+
+    stop(): Promise<void> {
+        return this.enqueue(() => this.stopNow())
+    }
+
+    /** Called on unload: nothing this controller does afterwards binds or records. */
+    dispose(): Promise<void> {
+        this.disposed = true
+        return this.stop()
+    }
+
+    private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+        const result = this.queue.then(operation, operation)
+        this.queue = result
+        return result
+    }
+
+    private async startNow(create: () => S): Promise<S | null> {
+        await this.stopNow()
         if (this.disposed) {
             return null
         }
@@ -56,7 +87,7 @@ export class ServerController<S extends StartableServer> {
         return server
     }
 
-    async stop(): Promise<void> {
+    private async stopNow(): Promise<void> {
         const server = this.current
         if (!server) {
             return
@@ -64,11 +95,5 @@ export class ServerController<S extends StartableServer> {
         this.current = null
         await server.stop()
         unregisterServer(server, this.host)
-    }
-
-    /** Called on unload: nothing this controller does afterwards binds or records. */
-    dispose(): Promise<void> {
-        this.disposed = true
-        return this.stop()
     }
 }

@@ -2,12 +2,23 @@ import { describe, expect, test } from 'bun:test'
 import { ServerController, type StartableServer } from './server-controller'
 import { registerServer, registeredServer } from './server-registry'
 
-/** A fake server whose bind can be held open to model a start in flight. */
-const makeServer = (options: { holdStart?: boolean } = {}) => {
+/**
+ * A fake server whose bind (and stop) can be held open to model an operation
+ * in flight, and whose bind can fail the way a taken port does.
+ */
+const makeServer = (
+    options: { holdStart?: boolean; holdStop?: boolean; failStart?: boolean } = {}
+) => {
     let releaseStart: () => void = () => {}
+    let releaseStop: () => void = () => {}
     const startGate = options.holdStart
         ? new Promise<void>((resolve) => {
               releaseStart = resolve
+          })
+        : Promise.resolve()
+    const stopGate = options.holdStop
+        ? new Promise<void>((resolve) => {
+              releaseStop = resolve
           })
         : Promise.resolve()
     const server = {
@@ -17,15 +28,29 @@ const makeServer = (options: { holdStart?: boolean } = {}) => {
         async start(): Promise<void> {
             server.starts += 1
             await startGate
+            if (options.failStart) {
+                throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:27124')
+            }
             server.isRunning = true
         },
-        stop(): Promise<void> {
+        async stop(): Promise<void> {
             server.stops += 1
+            await stopGate
             server.isRunning = false
-            return Promise.resolve()
         }
     }
-    return { server, releaseStart: () => releaseStart() }
+    return {
+        server,
+        releaseStart: () => releaseStart(),
+        releaseStop: () => releaseStop()
+    }
+}
+
+/** Let queued promise callbacks run until `done` holds (bounded). */
+const settle = async (done: () => boolean): Promise<void> => {
+    for (let tick = 0; !done() && tick < 100; tick += 1) {
+        await Promise.resolve()
+    }
 }
 
 type FakeServer = ReturnType<typeof makeServer>['server'] & StartableServer
@@ -50,8 +75,11 @@ describe('ServerController', () => {
             await Promise.resolve()
         }
         expect(server.starts).toBe(1) // the bind is in flight
-        await controller.dispose() // unload now
+        // Unload now. dispose() queues behind the start, so it settles once
+        // the late bind has been undone.
+        const disposing = controller.dispose()
         releaseStart()
+        await disposing
         expect(await starting).toBe(null)
         expect(server.isRunning).toBe(false)
         expect(server.stops).toBe(1)
@@ -139,5 +167,68 @@ describe('ServerController', () => {
         expect(server.isRunning).toBe(false)
         expect(registeredServer(host)).toBeUndefined()
         expect(controller.isDisposed).toBe(true)
+    })
+
+    test('overlapping starts run one after the other and leave one server running', async () => {
+        // The settings pane restarts on a port change while an auto-start is
+        // still binding: without serialising, both starts see no current
+        // server, both bind, and the first is overwritten and never stopped.
+        const host = {}
+        const controller = new ServerController<FakeServer>(host)
+        const { server: first, releaseStart } = makeServer({ holdStart: true })
+        const { server: second } = makeServer()
+        const firstStart = controller.start(() => first)
+        const secondStart = controller.start(() => second)
+        await settle(() => first.starts === 1)
+        expect(second.starts).toBe(0) // queued behind the first bind
+        releaseStart()
+        expect(await firstStart).toBe(first)
+        expect(await secondStart).toBe(second)
+        expect(first.isRunning).toBe(false)
+        expect(second.isRunning).toBe(true)
+        expect(controller.server).toBe(second)
+        expect(registeredServer(host)).toBe(second)
+    })
+
+    test('a dispose while an orphan is being stopped creates no server', async () => {
+        const host = {}
+        const { server: orphan, releaseStop } = makeServer({ holdStop: true })
+        await orphan.start()
+        registerServer(orphan, () => false, host)
+
+        const controller = new ServerController<FakeServer>(host)
+        const { server } = makeServer()
+        let created = 0
+        const starting = controller.start(() => {
+            created += 1
+            return server
+        })
+        await settle(() => orphan.stops === 1)
+        expect(orphan.stops).toBe(1) // the orphan's stop is in flight
+        const disposing = controller.dispose()
+        releaseStop()
+        await disposing
+        expect(await starting).toBe(null)
+        expect(created).toBe(0)
+        expect(server.starts).toBe(0)
+        expect(registeredServer(host)).toBeUndefined()
+    })
+
+    test('a bind that fails (port in use) records nothing and does not block the next start', async () => {
+        const host = {}
+        const controller = new ServerController<FakeServer>(host)
+        const { server: taken } = makeServer({ failStart: true })
+        const { server } = makeServer()
+        const failing = controller.start(() => taken)
+        const next = controller.start(() => server)
+        const failure = await failing.then(
+            () => null,
+            (error: unknown) => error
+        )
+        expect(failure).toBeInstanceOf(Error)
+        expect(String(failure)).toContain('EADDRINUSE')
+        expect(await next).toBe(server)
+        expect(controller.server).toBe(server)
+        expect(registeredServer(host)).toBe(server)
     })
 })
