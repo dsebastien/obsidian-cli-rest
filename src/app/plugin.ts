@@ -1,7 +1,7 @@
 import { ServerController } from './services/server-controller'
 import { registerWhatsNewView } from './whats-new'
 import { Notice, Plugin } from 'obsidian'
-import { DEFAULT_SETTINGS, pluginSettingsSchema } from './types/plugin-settings.intf'
+import { createDefaultSettings, pluginSettingsSchema } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
 import { CliRestMcpSettingTab } from './settings/settings-tab'
 import { log } from '../utils/log'
@@ -31,7 +31,7 @@ import {
 const CLI_COMMAND_REGISTRY_NAMES = new Set(CLI_COMMAND_REGISTRY.map((c) => c.command))
 
 export class CliRestMcpPlugin extends Plugin {
-    override settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+    override settings: PluginSettings = produce(createDefaultSettings(), () => {})
     cliStatus: CliAvailabilityResult = {
         available: false,
         binaryPath: '',
@@ -406,7 +406,7 @@ export class CliRestMcpPlugin extends Plugin {
 
         if (!loadedData) {
             log('Using default settings', 'debug')
-            this.settings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+            this.settings = produce(createDefaultSettings(), () => {})
             return
         }
 
@@ -417,8 +417,9 @@ export class CliRestMcpPlugin extends Plugin {
             log('Invalid settings, merging with defaults', 'warn')
             // Merge loaded data with defaults for forward compatibility
             const raw = loadedData as Record<string, unknown>
-            this.settings = produce(DEFAULT_SETTINGS, (draft: Draft<PluginSettings>) => {
-                for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof PluginSettings)[]) {
+            const defaults = createDefaultSettings()
+            this.settings = produce(defaults, (draft: Draft<PluginSettings>) => {
+                for (const key of Object.keys(defaults) as (keyof PluginSettings)[]) {
                     if (key in raw) {
                         const fieldParsed = pluginSettingsSchema.shape[key].safeParse(raw[key])
                         if (fieldParsed.success) {

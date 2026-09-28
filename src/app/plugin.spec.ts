@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test'
 import * as obsidian from 'obsidian'
+import { produce } from 'immer'
 import type { App, PluginManifest } from 'obsidian'
 import { CliRestMcpPlugin } from './plugin'
 import { toggleServer } from './commands/toggle-server'
 import { HttpServerWrapper } from './services/http-server'
 import { McpServerWrapper } from './services/mcp-server'
-import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
+import { DEFAULT_SETTINGS, createDefaultSettings } from './types/plugin-settings.intf'
 
 /**
  * Plugin-level lifecycle wiring: the server controller's own tests prove a
@@ -39,7 +40,7 @@ let saves = 0
 
 const makePlugin = (): TestPlugin => {
     const plugin = new TestPlugin({} as App, {} as PluginManifest)
-    plugin.settings = { ...DEFAULT_SETTINGS, bindAddress: '127.0.0.1', port: 0 }
+    plugin.settings = { ...createDefaultSettings(), bindAddress: '127.0.0.1', port: 0 }
     plugin.saveData = (): Promise<void> => {
         saves += 1
         return Promise.resolve()
@@ -352,5 +353,58 @@ describe('toggle server command', () => {
         plugin.startServer = (): Promise<boolean> => Promise.resolve(true)
         await toggleServer(plugin)
         expect(notices).toEqual(['REST and MCP server started on 127.0.0.1:0'])
+    })
+})
+
+describe('default settings', () => {
+    test('constructing the plugin never freezes the shared defaults', () => {
+        const plugin = new CliRestMcpPlugin({} as App, {} as PluginManifest)
+        expect(Object.isFrozen(plugin.settings)).toBe(true)
+        expect(Object.isFrozen(DEFAULT_SETTINGS)).toBe(false)
+        expect(Object.isFrozen(DEFAULT_SETTINGS.blockedCommands)).toBe(false)
+    })
+
+    const bareLoader = (stored: unknown): CliRestMcpPlugin =>
+        // Skip the constructor: its field initializer is the test above.
+        Object.assign(Object.create(CliRestMcpPlugin.prototype) as CliRestMcpPlugin, {
+            settings: produce(createDefaultSettings(), () => {}),
+            loadData: (): Promise<unknown> => Promise.resolve(stored),
+            saveData: (): Promise<void> => Promise.resolve()
+        })
+
+    test('loadSettings with no stored data never freezes the shared defaults', async () => {
+        const plugin = bareLoader(null)
+
+        await plugin.loadSettings()
+
+        // Immer deep-freezes what produce returns, including subtrees shared
+        // with its base: producing from DEFAULT_SETTINGS froze the constant
+        // for the rest of the process.
+        expect(plugin.settings).toEqual(DEFAULT_SETTINGS)
+        // This branch replaces the settings; they must not become the constant.
+        expect(plugin.settings).not.toBe(DEFAULT_SETTINGS)
+        expect(Object.isFrozen(DEFAULT_SETTINGS)).toBe(false)
+        expect(Object.isFrozen(DEFAULT_SETTINGS.blockedCommands)).toBe(false)
+    })
+
+    test('merging invalid stored data never freezes the shared defaults', async () => {
+        // An invalid port fails the whole parse, so loadSettings merges the
+        // valid fields onto the defaults; blockedCommands is absent and so
+        // stays shared with the produce base.
+        const plugin = bareLoader({ port: 1, bindAddress: '0.0.0.0' })
+
+        await plugin.loadSettings()
+
+        expect(plugin.settings.bindAddress).toBe('0.0.0.0')
+        expect(plugin.settings.port).toBe(DEFAULT_SETTINGS.port)
+        expect(Object.isFrozen(DEFAULT_SETTINGS)).toBe(false)
+        expect(Object.isFrozen(DEFAULT_SETTINGS.blockedCommands)).toBe(false)
+    })
+
+    test('each default settings object is an independent copy', () => {
+        const one = createDefaultSettings()
+        one.blockedCommands.push('delete')
+        expect(createDefaultSettings().blockedCommands).toEqual([])
+        expect(DEFAULT_SETTINGS.blockedCommands).toEqual([])
     })
 })
