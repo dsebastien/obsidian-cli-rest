@@ -49,6 +49,11 @@ export function unregisterServer(server: StoppableServer, host: object = window)
  * Stops and forgets a server whose owning instance is gone. A server whose
  * owner is still alive is left alone. Returns true when a running orphan was
  * stopped.
+ *
+ * A safety net, rarely exercised: an owner stops its own server and clears
+ * the record when it is disposed, so a dead owner's record only exists while
+ * that stop is still pending (or if it failed). This covers the next instance
+ * starting inside that window.
  */
 export async function stopOrphanedServer(host: object = window): Promise<boolean> {
     const record = hostOf(host)[SERVER_KEY]
