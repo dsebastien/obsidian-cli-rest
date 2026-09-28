@@ -17,7 +17,7 @@ import {
     mergeDiscoveredCommands
 } from './domain/cli-command-registry'
 import type { CliCommandDefinition } from './domain/cli-command'
-import { HttpServerWrapper } from './services/http-server'
+import { HttpServerWrapper, isLoopback } from './services/http-server'
 import { McpServerWrapper } from './services/mcp-server'
 import {
     registerToggleServerCommand,
@@ -209,16 +209,25 @@ export class CliRestMcpPlugin extends Plugin {
             return false
         }
 
-        // Enforce API key when binding to all interfaces
-        if (this.settings.bindAddress === '0.0.0.0' && !this.settings.apiKey) {
-            this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
-                draft.apiKey = generateApiKey()
+        // Enforce API key when binding to all interfaces. Through
+        // updateSettings, which queues behind any write in flight: assigning
+        // this.settings directly could be overwritten by that write's
+        // key-less snapshot before the server is created. The wrapper also
+        // refuses a non-loopback bind without a key, whatever happens here.
+        if (!isLoopback(this.settings.bindAddress) && !this.settings.apiKey) {
+            let generated = false
+            await this.updateSettings((draft) => {
+                if (!isLoopback(draft.bindAddress) && !draft.apiKey) {
+                    draft.apiKey = generateApiKey()
+                    generated = true
+                }
             })
-            await this.saveSettings()
             if (this.serverController.isDisposed) {
                 return false
             }
-            new Notice('API key auto-generated (required when binding to 0.0.0.0)')
+            if (generated) {
+                new Notice('API key auto-generated (required when binding to 0.0.0.0)')
+            }
         }
 
         const context = this.buildContext()
@@ -250,7 +259,9 @@ export class CliRestMcpPlugin extends Plugin {
             await mcpServer?.close()
             throw err
         }
-        if (!started) {
+        // Unloaded while the bind ran (the controller undid it) or right
+        // after it resolved: the MCP server built for it serves nothing.
+        if (!started || this.serverController.isDisposed) {
             await mcpServer?.close()
             return false
         }

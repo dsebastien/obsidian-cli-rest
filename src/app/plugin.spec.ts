@@ -173,6 +173,68 @@ describe('CliRestMcpPlugin MCP server on a failed start', () => {
         expect(closes).toBe(1)
         plugin.onunload()
     })
+
+    test('the MCP server built for a start abandoned by an unload is closed', async () => {
+        const plugin = makePlugin()
+        plugin.settings = { ...plugin.settings, enableMcp: true }
+        spyOn(HttpServerWrapper.prototype, 'start').mockImplementation(() => {
+            plugin.onunload() // unloaded while binding
+            return Promise.resolve()
+        })
+        spyOn(HttpServerWrapper.prototype, 'stop').mockImplementation(() => Promise.resolve())
+        let closes = 0
+        spyOn(McpServerWrapper.prototype, 'close').mockImplementation(() => {
+            closes += 1
+            return Promise.resolve()
+        })
+        expect(await plugin.startServer()).toBe(false)
+        expect(closes).toBe(1)
+    })
+})
+
+describe('CliRestMcpPlugin API key on a 0.0.0.0 start', () => {
+    afterEach(() => {
+        mock.restore()
+    })
+
+    test('a settings write in flight cannot drop the generated key', async () => {
+        // A write that began before the key was generated carries a key-less
+        // snapshot. Committing it after the key was set must not leave the
+        // server (and the settings) without one.
+        const plugin = makePlugin()
+        plugin.settings = { ...plugin.settings, bindAddress: '0.0.0.0', apiKey: '' }
+        let releaseSave: () => void = () => {}
+        let held = true
+        plugin.saveData = (): Promise<void> => {
+            if (!held) {
+                return Promise.resolve()
+            }
+            held = false
+            return new Promise<void>((resolve) => {
+                releaseSave = resolve
+            })
+        }
+        const bound: boolean[] = []
+        spyOn(HttpServerWrapper.prototype, 'start').mockImplementation(() => {
+            bound.push(plugin.settings.apiKey !== '')
+            return Promise.resolve()
+        })
+        spyOn(HttpServerWrapper.prototype, 'stop').mockImplementation(() => Promise.resolve())
+        const portWrite = plugin.updateSettings((draft) => {
+            draft.port = 27199
+        })
+        const starting = plugin.startServer()
+        for (let tick = 0; tick < 20; tick += 1) {
+            await Promise.resolve()
+        }
+        releaseSave()
+        await portWrite
+        expect(await starting).toBe(true)
+        expect(bound).toEqual([true])
+        expect(plugin.settings.apiKey).not.toBe('')
+        expect(plugin.settings.port).toBe(27199)
+        plugin.onunload()
+    })
 })
 
 describe('toggle server command', () => {
@@ -187,7 +249,7 @@ describe('toggle server command', () => {
             Promise.reject(new Error('listen EADDRINUSE: address already in use'))
         await toggleServer(plugin)
         expect(notices).toEqual([
-            'REST and MCP server: Failed to toggle the server: listen EADDRINUSE: address already in use'
+            'Failed to start server: listen EADDRINUSE: address already in use'
         ])
     })
 

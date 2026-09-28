@@ -21,8 +21,9 @@ export function registerToggleServerCommand(plugin: CliRestMcpPlugin): void {
  * of escaping as an unhandled rejection the user never sees.
  */
 export async function toggleServer(plugin: CliRestMcpPlugin): Promise<void> {
+    const stopping = plugin.isServerRunning()
     try {
-        if (plugin.isServerRunning()) {
+        if (stopping) {
             await plugin.stopServer()
             new Notice('REST and MCP server stopped')
             return
@@ -37,7 +38,8 @@ export async function toggleServer(plugin: CliRestMcpPlugin): Promise<void> {
     } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error'
         log(`Toggling the server failed: ${msg}`, 'error')
-        new Notice(`REST and MCP server: Failed to toggle the server: ${msg}`)
+        // Worded like the settings pane's Start/Stop button reports it.
+        new Notice(`Failed to ${stopping ? 'stop' : 'start'} server: ${msg}`)
     }
 }
 

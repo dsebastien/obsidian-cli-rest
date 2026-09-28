@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { request } from 'node:http'
-import { HttpServerWrapper } from './http-server'
+import { HttpServerWrapper, isLoopback } from './http-server'
 import type { RouterContext } from './request-router'
 
 function createTestContext(): RouterContext {
@@ -206,5 +206,32 @@ describe('HttpServerWrapper', () => {
         }
         expect(threw).toBe(true)
         await server1.stop()
+    })
+})
+
+describe('HttpServerWrapper key requirement', () => {
+    test('refuses to listen on a non-loopback address without an API key', async () => {
+        const server = new HttpServerWrapper({
+            port: 0,
+            bindAddress: '0.0.0.0',
+            apiKey: '',
+            enableCors: false,
+            context: createTestContext()
+        })
+        const failure = await server.start().then(
+            () => null,
+            (error: unknown) => error
+        )
+        expect(String(failure)).toContain('without an API key')
+        expect(server.isRunning).toBe(false)
+    })
+
+    test('loopback addresses are recognised, others are not', () => {
+        for (const address of ['127.0.0.1', '127.1.2.3', 'localhost', '::1']) {
+            expect(isLoopback(address)).toBe(true)
+        }
+        for (const address of ['0.0.0.0', '192.168.1.10', '::', '127.0.0.1.evil', '']) {
+            expect(isLoopback(address)).toBe(false)
+        }
     })
 })

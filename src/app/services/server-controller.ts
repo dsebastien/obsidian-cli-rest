@@ -25,7 +25,10 @@ export interface StartableServer extends StoppableServer {
  * settled. Two overlapping starts would otherwise both see no current server,
  * both bind, and the first assignment would be overwritten, leaving a server
  * nothing stops (the settings pane restarts on a port change while an
- * auto-start may still be running).
+ * auto-start may still be running). The flip side: a server.stop() that
+ * never settles holds up every later start and stop. Node's server.close()
+ * settles once connections end, and the HTTP wrapper closes them all first,
+ * so this is not expected; if it ever happens, a restart of Obsidian clears it.
  */
 export class ServerController<S extends StartableServer> {
     private current: S | null = null
