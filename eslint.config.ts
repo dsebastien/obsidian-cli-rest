@@ -13,6 +13,8 @@ import obsidianmd from 'eslint-plugin-obsidianmd'
 // pinned exactly, and a break here is a loud module-resolution error, never a
 // silent shrinking of the list.
 import { DEFAULT_BRANDS } from 'eslint-plugin-obsidianmd/dist/lib/rules/ui/brands.js'
+// `acronyms` REPLACES DEFAULT_ACRONYMS the same way, so it is spread too.
+import { DEFAULT_ACRONYMS } from 'eslint-plugin-obsidianmd/dist/lib/rules/ui/acronyms.js'
 import { defineConfig } from 'eslint/config'
 
 // eslint-plugin-obsidianmd 0.4.x lowered these rules from error to warn in its
@@ -202,13 +204,11 @@ export default defineConfig([
                     brands: [
                         ...DEFAULT_BRANDS,
                         'Knowii',
-                        'X',
                         'GitHub Sponsors',
                         'Sébastien Dubois',
-                        'dSebastien',
-                        'Obsidian'
+                        'dSebastien'
                     ],
-                    acronyms: ['API', 'REST', 'MCP', 'CLI', 'CORS', 'URL', 'HTTP', 'AI'],
+                    acronyms: [...DEFAULT_ACRONYMS, 'REST', 'MCP', 'CORS'],
                     ignoreRegex: [
                         // Single-token literals are values, not sentences.
                         '^\\S+$',
