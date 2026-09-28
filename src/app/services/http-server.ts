@@ -35,10 +35,10 @@ export class HttpServerWrapper {
      * Start the HTTP server.
      */
     async start(): Promise<void> {
-        // An empty key disables auth. That is tolerable on loopback only; on
+        // An empty (or blank) key disables auth. That is tolerable on loopback only; on
         // any other interface it would expose the vault to the network, so
         // refuse to bind rather than trust every caller to have checked.
-        if (!isLoopback(this.options.bindAddress) && !this.options.apiKey) {
+        if (!isLoopback(this.options.bindAddress) && !this.options.apiKey.trim()) {
             throw new Error(`Refusing to listen on ${this.options.bindAddress} without an API key`)
         }
         if (this.server) {

@@ -214,10 +214,10 @@ export class CliRestMcpPlugin extends Plugin {
         // this.settings directly could be overwritten by that write's
         // key-less snapshot before the server is created. The wrapper also
         // refuses a non-loopback bind without a key, whatever happens here.
-        if (!isLoopback(this.settings.bindAddress) && !this.settings.apiKey) {
+        if (!isLoopback(this.settings.bindAddress) && !this.settings.apiKey.trim()) {
             let generated = false
             await this.updateSettings((draft) => {
-                if (!isLoopback(draft.bindAddress) && !draft.apiKey) {
+                if (!isLoopback(draft.bindAddress) && !draft.apiKey.trim()) {
                     draft.apiKey = generateApiKey()
                     generated = true
                 }
@@ -226,7 +226,7 @@ export class CliRestMcpPlugin extends Plugin {
                 return false
             }
             if (generated) {
-                new Notice('API key auto-generated (required when binding to 0.0.0.0)')
+                new Notice('API key auto-generated (required when binding beyond localhost)')
             }
         }
 
@@ -459,6 +459,12 @@ export class CliRestMcpPlugin extends Plugin {
      */
     updateSettings(mutator: (draft: Draft<PluginSettings>) => void): Promise<void> {
         const run = async (): Promise<void> => {
+            // An unloaded instance writes nothing: its successor has already
+            // loaded data.json, and a queued write (the generated API key,
+            // say) landing now would overwrite what that instance holds.
+            if (this.serverController.isDisposed) {
+                return
+            }
             const next = produce(this.settings, mutator)
             await this.saveData(next)
             this.settings = next

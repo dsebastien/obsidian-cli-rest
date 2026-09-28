@@ -192,6 +192,91 @@ describe('CliRestMcpPlugin MCP server on a failed start', () => {
     })
 })
 
+describe('CliRestMcpPlugin unloaded once the controller has resolved', () => {
+    const RECORD_KEY = Symbol.for('cli-rest-mcp/http-server')
+
+    afterEach(() => {
+        mock.restore()
+        Reflect.deleteProperty(self, RECORD_KEY)
+    })
+
+    test('closes the MCP server instead of keeping it', async () => {
+        // The controller records the server and returns it; the unload lands
+        // right then, before startServer resumes. Recording is observed
+        // through the window record the controller writes.
+        const plugin = makePlugin()
+        plugin.settings = { ...plugin.settings, enableMcp: true }
+        let record: unknown
+        Object.defineProperty(self, RECORD_KEY, {
+            configurable: true,
+            get: () => record,
+            set: (value: unknown) => {
+                record = value
+                if (value) {
+                    plugin.onunload()
+                }
+            }
+        })
+        spyOn(HttpServerWrapper.prototype, 'start').mockImplementation(() => Promise.resolve())
+        spyOn(HttpServerWrapper.prototype, 'stop').mockImplementation(() => Promise.resolve())
+        let closes = 0
+        spyOn(McpServerWrapper.prototype, 'close').mockImplementation(() => {
+            closes += 1
+            return Promise.resolve()
+        })
+        expect(await plugin.startServer()).toBe(false)
+        expect(closes).toBe(1)
+    })
+})
+
+describe('CliRestMcpPlugin settings writes after unload', () => {
+    afterEach(() => {
+        mock.restore()
+    })
+
+    test('a key write queued behind an in-flight write is dropped once unloaded', async () => {
+        const plugin = makePlugin()
+        plugin.settings = { ...plugin.settings, bindAddress: '0.0.0.0', apiKey: '' }
+        let releaseSave: () => void = () => {}
+        const written: string[] = []
+        plugin.saveData = (data: unknown): Promise<void> => {
+            written.push((data as { apiKey: string }).apiKey)
+            if (written.length > 1) {
+                return Promise.resolve()
+            }
+            return new Promise<void>((resolve) => {
+                releaseSave = resolve
+            })
+        }
+        spyOn(HttpServerWrapper.prototype, 'start').mockImplementation(() => Promise.resolve())
+        spyOn(HttpServerWrapper.prototype, 'stop').mockImplementation(() => Promise.resolve())
+        const portWrite = plugin.updateSettings((draft) => {
+            draft.port = 27199
+        })
+        const starting = plugin.startServer() // queues the key write
+        for (let tick = 0; tick < 20; tick += 1) {
+            await Promise.resolve()
+        }
+        plugin.onunload()
+        releaseSave()
+        await portWrite
+        expect(await starting).toBe(false)
+        expect(written).toEqual(['']) // only the write that was already running
+        expect(plugin.settings.apiKey).toBe('')
+    })
+
+    test('a blank key counts as missing', async () => {
+        const plugin = makePlugin()
+        plugin.settings = { ...plugin.settings, bindAddress: '0.0.0.0', apiKey: '   ' }
+        spyOn(HttpServerWrapper.prototype, 'start').mockImplementation(() => Promise.resolve())
+        spyOn(HttpServerWrapper.prototype, 'stop').mockImplementation(() => Promise.resolve())
+        expect(await plugin.startServer()).toBe(true)
+        expect(plugin.settings.apiKey.trim()).not.toBe('')
+        expect(notices).toContain('API key auto-generated (required when binding beyond localhost)')
+        plugin.onunload()
+    })
+})
+
 describe('CliRestMcpPlugin API key on a 0.0.0.0 start', () => {
     afterEach(() => {
         mock.restore()

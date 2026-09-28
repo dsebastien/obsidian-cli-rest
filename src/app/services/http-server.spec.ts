@@ -210,11 +210,11 @@ describe('HttpServerWrapper', () => {
 })
 
 describe('HttpServerWrapper key requirement', () => {
-    test('refuses to listen on a non-loopback address without an API key', async () => {
+    test.each(['', '   '])('refuses to listen beyond loopback with the key %p', async (apiKey) => {
         const server = new HttpServerWrapper({
             port: 0,
             bindAddress: '0.0.0.0',
-            apiKey: '',
+            apiKey,
             enableCors: false,
             context: createTestContext()
         })
@@ -230,7 +230,17 @@ describe('HttpServerWrapper key requirement', () => {
         for (const address of ['127.0.0.1', '127.1.2.3', 'localhost', '::1']) {
             expect(isLoopback(address)).toBe(true)
         }
-        for (const address of ['0.0.0.0', '192.168.1.10', '::', '127.0.0.1.evil', '']) {
+        for (const address of [
+            '0.0.0.0',
+            '192.168.1.10',
+            '::',
+            '127.0.0.1.evil',
+            '',
+            '::ffff:127.0.0.1',
+            '[::1]',
+            ' 127.0.0.1',
+            'LOCALHOST'
+        ]) {
             expect(isLoopback(address)).toBe(false)
         }
     })
