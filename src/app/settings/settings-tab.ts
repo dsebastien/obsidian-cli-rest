@@ -285,7 +285,8 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                             text: 'Binding to 0.0.0.0 exposes the server to your network. An API key is required and enforced.'
                         })
                         // update() (Start/Stop server, Recheck) re-runs this
-                        // hook on the SAME row and only resets its control area
+                        // hook on the SAME row and only resets its name,
+                        // description and control area
                         return () => warningEl.remove()
                     }
                 },
@@ -449,8 +450,9 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
                         setting.settingEl.addClass('cli-rest-settings-embed')
                         setting.infoEl.remove()
                         // In a wrapper removed by the returned cleanup: update() re-runs
-                        // this hook on the SAME row and only resets its control area, so
-                        // content appended straight to settingEl would pile up.
+                        // this hook on the SAME row and only resets its name, description
+                        // and control area, so content appended straight to settingEl
+                        // would pile up.
                         const blockEl = setting.settingEl.createDiv()
                         renderSupportSection(blockEl, (el) => {
                             this.renderBuyMeACoffeeBadge(el)
