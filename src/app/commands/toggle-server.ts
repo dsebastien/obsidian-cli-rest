@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian'
 import type { CliRestMcpPlugin } from '../plugin'
+import { log } from '../../utils/log'
 
 /**
  * Register the toggle server command.
@@ -14,15 +15,29 @@ export function registerToggleServerCommand(plugin: CliRestMcpPlugin): void {
     })
 }
 
-async function toggleServer(plugin: CliRestMcpPlugin): Promise<void> {
-    if (plugin.isServerRunning()) {
-        await plugin.stopServer()
-        new Notice('REST and MCP server stopped')
-    } else {
-        await plugin.startServer()
-        new Notice(
-            `REST and MCP server started on ${plugin.settings.bindAddress}:${plugin.settings.port}`
-        )
+/**
+ * Stop a running server, or start one. Never rejects: a failure (a taken
+ * port, say) is reported in a Notice, like the settings pane does, instead
+ * of escaping as an unhandled rejection the user never sees.
+ */
+export async function toggleServer(plugin: CliRestMcpPlugin): Promise<void> {
+    try {
+        if (plugin.isServerRunning()) {
+            await plugin.stopServer()
+            new Notice('REST and MCP server stopped')
+            return
+        }
+        // False means the plugin was unloaded meanwhile: nothing started,
+        // so nothing to announce.
+        if (await plugin.startServer()) {
+            new Notice(
+                `REST and MCP server started on ${plugin.settings.bindAddress}:${plugin.settings.port}`
+            )
+        }
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        log(`Toggling the server failed: ${msg}`, 'error')
+        new Notice(`REST and MCP server: Failed to toggle the server: ${msg}`)
     }
 }
 

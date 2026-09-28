@@ -150,11 +150,18 @@ export class CliRestMcpPlugin extends Plugin {
      * Start the server with retry logic to handle EADDRINUSE during
      * plugin reloads (the old server may not have fully released the port yet).
      */
-    private async startServerWithRetry(): Promise<void> {
+    protected async startServerWithRetry(): Promise<void> {
         const MAX_RETRIES = 3
         const RETRY_DELAY_MS = 500
 
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            // Re-checked on every attempt: the instance may have been unloaded,
+            // or the user may have started the server (command or settings)
+            // while this retry waited. Retrying then would tear that server
+            // down and rebuild it.
+            if (this.serverController.isDisposed || this.isServerRunning()) {
+                return
+            }
             try {
                 await this.startServer()
                 return
@@ -168,27 +175,39 @@ export class CliRestMcpPlugin extends Plugin {
                         'warn'
                     )
                     await this.delay(RETRY_DELAY_MS)
-                    if (this.serverController.isDisposed) {
-                        return
-                    }
                 } else {
                     log(`Auto-start failed: ${msg}`, 'error')
-                    new Notice(`REST and MCP server: Failed to start server: ${msg}`)
+                    // An unloaded instance has nothing to report: its failure
+                    // is moot, and the Notice would outlive the plugin.
+                    if (!this.serverController.isDisposed) {
+                        new Notice(`REST and MCP server: Failed to start server: ${msg}`)
+                    }
                     return
                 }
             }
         }
     }
 
-    private delay(ms: number): Promise<void> {
+    protected delay(ms: number): Promise<void> {
         return new Promise((resolve) => window.setTimeout(resolve, ms))
     }
 
-    async startServer(): Promise<void> {
+    /**
+     * Start (or restart) the server. Resolves true when a server is running
+     * for this instance afterwards, false when the instance was unloaded
+     * first; rejects when the bind fails.
+     */
+    async startServer(): Promise<boolean> {
         if (this.serverController.isDisposed) {
-            return
+            return false
         }
         await this.stopServer()
+        // Every await is a point where the plugin can be unloaded. After that,
+        // nothing may be written: an unloaded instance saving a fresh API key
+        // would overwrite what its successor loaded.
+        if (this.serverController.isDisposed) {
+            return false
+        }
 
         // Enforce API key when binding to all interfaces
         if (this.settings.bindAddress === '0.0.0.0' && !this.settings.apiKey) {
@@ -196,6 +215,9 @@ export class CliRestMcpPlugin extends Plugin {
                 draft.apiKey = generateApiKey()
             })
             await this.saveSettings()
+            if (this.serverController.isDisposed) {
+                return false
+            }
             new Notice('API key auto-generated (required when binding to 0.0.0.0)')
         }
 
@@ -209,24 +231,32 @@ export class CliRestMcpPlugin extends Plugin {
 
         // The controller closes a server a dead predecessor left running,
         // binds, and records the new one only if this instance is still loaded.
-        const started = await this.serverController.start(
-            () =>
-                new HttpServerWrapper({
-                    port: this.settings.port,
-                    bindAddress: this.settings.bindAddress,
-                    apiKey: this.settings.apiKey,
-                    enableCors: this.settings.enableCors,
-                    context,
-                    mcpHandler: mcpServer
-                        ? (req, res) => mcpServer.handleRequest(req, res)
-                        : undefined
-                })
-        )
+        let started: HttpServerWrapper | null
+        try {
+            started = await this.serverController.start(
+                () =>
+                    new HttpServerWrapper({
+                        port: this.settings.port,
+                        bindAddress: this.settings.bindAddress,
+                        apiKey: this.settings.apiKey,
+                        enableCors: this.settings.enableCors,
+                        context,
+                        mcpHandler: mcpServer
+                            ? (req, res) => mcpServer.handleRequest(req, res)
+                            : undefined
+                    })
+            )
+        } catch (err) {
+            await mcpServer?.close()
+            throw err
+        }
         if (!started) {
-            return
+            await mcpServer?.close()
+            return false
         }
         this.mcpServer = mcpServer
         this.updateStatusBar()
+        return true
     }
 
     /**
@@ -256,9 +286,9 @@ export class CliRestMcpPlugin extends Plugin {
         return this.httpServer?.isRunning ?? false
     }
 
-    async restartServer(): Promise<void> {
+    async restartServer(): Promise<boolean> {
         await this.stopServer()
-        await this.startServer()
+        return this.startServer()
     }
 
     /**

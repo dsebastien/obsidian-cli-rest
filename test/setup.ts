@@ -33,6 +33,8 @@ void mock.module('obsidian', () => ({
     App: class App {},
     TFile: class TFile {},
     Plugin: class Plugin {},
+    ItemView: class ItemView {},
+    MarkdownRenderer: { render: () => Promise.resolve() },
     PluginSettingTab: class PluginSettingTab {},
     Setting: class Setting {},
     MarkdownView: class MarkdownView {},
