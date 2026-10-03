@@ -20,6 +20,16 @@ import type { CliCommandDefinition } from './domain/cli-command'
 import { HttpServerWrapper, isLoopback } from './services/http-server'
 import { McpServerWrapper } from './services/mcp-server'
 import {
+    MISSING_API_KEY_MESSAGE,
+    isApiKeyMissing,
+    peekApiKey,
+    readApiKey,
+    readSecret,
+    resolveApiKeySecret,
+    storeNewApiKey
+} from './services/api-key-secret'
+import type { SecretStore } from './services/api-key-secret'
+import {
     registerToggleServerCommand,
     registerCopyApiKeyCommand,
     registerCopyRestUrlCommand,
@@ -53,20 +63,86 @@ export class CliRestMcpPlugin extends Plugin {
      * still marked unavailable.
      */
     private recheckInFlight: Promise<CliAvailabilityResult> | null = null
+    /** Obsidian's device-local secret storage (protected: specs substitute it). */
+    protected get secretStore(): SecretStore {
+        return this.app.secretStorage
+    }
+
+    /** Clock for the legacy plaintext grace period (protected: specs substitute it). */
+    protected now(): Date {
+        return new Date()
+    }
+
+    /**
+     * The API key, read at use time: this device's SecretStorage, else the
+     * legacy plaintext copy still in data.json (migrated into SecretStorage on
+     * the spot). Never cached in the settings. '' when neither holds a key.
+     */
+    getApiKey(): string {
+        return readApiKey(this.secretStore, this.settings)
+    }
+
+    /** Whether a secret name is configured but neither this device nor data.json holds a key. */
+    isApiKeyMissing(): boolean {
+        return isApiKeyMissing(this.secretStore, this.settings)
+    }
+
+    /** Whether data.json still carries the legacy plaintext key. */
+    hasLegacyPlaintextApiKey(): boolean {
+        return this.settings.apiKey !== undefined
+    }
+
+    /**
+     * Rotate the API key: store a new one in SecretStorage only, drop the
+     * (now stale) legacy plaintext copy, and apply it to a running server.
+     */
+    async regenerateApiKey(): Promise<void> {
+        const key = generateApiKey()
+        const current = this.settings.apiKeySecretName
+        const name = current || storeNewApiKey(this.secretStore, key)
+        if (current) {
+            this.secretStore.setSecret(current, key)
+        }
+        await this.updateSettings((draft) => {
+            draft.apiKeySecretName = name
+            delete draft.apiKey
+        })
+        await this.syncServerAuth()
+    }
+
+    /**
+     * Point the settings at another secret (the settings picker). The legacy
+     * plaintext copy no longer describes the key in use, so it goes.
+     */
+    async setApiKeySecretName(name: string): Promise<void> {
+        await this.updateSettings((draft) => {
+            draft.apiKeySecretName = name
+            delete draft.apiKey
+        })
+        await this.syncServerAuth()
+    }
+
+    /**
+     * "Remove plain-text copy now": make sure this device's SecretStorage
+     * holds the key first, then drop the legacy field from data.json.
+     */
+    async removeLegacyPlaintextApiKey(): Promise<void> {
+        const key = this.getApiKey()
+        if (key.trim() && readSecret(this.secretStore, this.settings.apiKeySecretName) !== key) {
+            throw new Error('Could not store the API key in secret storage')
+        }
+        await this.updateSettings((draft) => {
+            delete draft.apiKey
+        })
+    }
 
     override async onload(): Promise<void> {
         // Must run before anything can call saveData (fresh-install detection)
         registerWhatsNewView(this)
         log('Initializing', 'debug')
+        // Also migrates a legacy plaintext API key into SecretStorage and
+        // generates one on a fresh install.
         await this.loadSettings()
-
-        // Auto-generate API key on first enable if empty
-        if (!this.settings.apiKey) {
-            this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
-                draft.apiKey = generateApiKey()
-            })
-            await this.saveSettings()
-        }
 
         // Register commands
         registerToggleServerCommand(this)
@@ -209,16 +285,28 @@ export class CliRestMcpPlugin extends Plugin {
             return false
         }
 
+        // A secret name with no value on this device (data.json synced from
+        // another device; SecretStorage is device-local). Starting would
+        // disable auth, and generating a key would break every configured
+        // client: refuse, and tell the user what to set.
+        if (this.isApiKeyMissing()) {
+            throw new Error(
+                `API key secret "${this.settings.apiKeySecretName}" is not set on this device. Set it in the plugin's Security settings.`
+            )
+        }
+
         // Enforce API key when binding to all interfaces. Through
         // updateSettings, which queues behind any write in flight: assigning
         // this.settings directly could be overwritten by that write's
         // key-less snapshot before the server is created. The wrapper also
         // refuses a non-loopback bind without a key, whatever happens here.
-        if (!isLoopback(this.settings.bindAddress) && !this.settings.apiKey.trim()) {
+        // Only reached with no secret name at all (never a missing secret,
+        // refused above), so no configured client can be broken by it.
+        if (!isLoopback(this.settings.bindAddress) && !this.getApiKey().trim()) {
             let generated = false
             await this.updateSettings((draft) => {
-                if (!isLoopback(draft.bindAddress) && !draft.apiKey.trim()) {
-                    draft.apiKey = generateApiKey()
+                if (!isLoopback(draft.bindAddress) && !peekApiKey(this.secretStore, draft).trim()) {
+                    draft.apiKeySecretName = storeNewApiKey(this.secretStore, generateApiKey())
                     generated = true
                 }
             })
@@ -247,7 +335,7 @@ export class CliRestMcpPlugin extends Plugin {
                     new HttpServerWrapper({
                         port: this.settings.port,
                         bindAddress: this.settings.bindAddress,
-                        apiKey: this.settings.apiKey,
+                        apiKey: this.getApiKey(),
                         enableCors: this.settings.enableCors,
                         context,
                         mcpHandler: mcpServer
@@ -276,10 +364,21 @@ export class CliRestMcpPlugin extends Plugin {
      * Without this, the key captured when the server started stays in force and
      * a regenerated key silently does nothing until the next restart — including
      * the case where the stale key is the empty string, which disables auth
-     * entirely rather than rejecting requests.
+     * entirely rather than rejecting requests. For the same reason, a key
+     * that is now missing on this device stops the server instead of being
+     * pushed as an empty (auth-disabling) key.
      */
-    syncServerAuth(): void {
-        this.httpServer?.updateApiKey(this.settings.apiKey)
+    async syncServerAuth(): Promise<void> {
+        if (!this.httpServer) {
+            return
+        }
+        const key = this.getApiKey()
+        if (!key.trim()) {
+            await this.stopServer()
+            new Notice(MISSING_API_KEY_MESSAGE)
+            return
+        }
+        this.httpServer.updateApiKey(key)
     }
 
     async stopServer(): Promise<void> {
@@ -403,10 +502,12 @@ export class CliRestMcpPlugin extends Plugin {
     async loadSettings(): Promise<void> {
         log('Loading settings', 'debug')
         const loadedData = (await this.loadData()) as unknown
+        let mustSave = false
 
         if (!loadedData) {
             log('Using default settings', 'debug')
             this.settings = produce(createDefaultSettings(), () => {})
+            await this.initApiKeySecret(false)
             return
         }
 
@@ -419,7 +520,11 @@ export class CliRestMcpPlugin extends Plugin {
             const raw = loadedData as Record<string, unknown>
             const defaults = createDefaultSettings()
             this.settings = produce(defaults, (draft: Draft<PluginSettings>) => {
-                for (const key of Object.keys(defaults) as (keyof PluginSettings)[]) {
+                // The schema's keys, not the defaults': optional fields (the
+                // legacy apiKey) have no default and must survive the merge.
+                for (const key of Object.keys(
+                    pluginSettingsSchema.shape
+                ) as (keyof PluginSettings)[]) {
                     if (key in raw) {
                         const fieldParsed = pluginSettingsSchema.shape[key].safeParse(raw[key])
                         if (fieldParsed.success) {
@@ -429,10 +534,58 @@ export class CliRestMcpPlugin extends Plugin {
                     }
                 }
             })
-            await this.saveSettings()
+            mustSave = true
         }
 
+        await this.initApiKeySecret(mustSave)
         log('Settings loaded', 'debug', this.settings)
+    }
+
+    /**
+     * Per-device API key step on load: copy the legacy plaintext key into
+     * this device's SecretStorage, generate one on a fresh install, purge the
+     * legacy copy after the grace period, or warn when this device has no key.
+     * Idempotent.
+     */
+    private async initApiKeySecret(settingsChanged: boolean): Promise<void> {
+        let mustSave = settingsChanged
+        try {
+            const result = resolveApiKeySecret(
+                this.secretStore,
+                this.settings,
+                this.now(),
+                generateApiKey
+            )
+            if (result.mustSave) {
+                const next = result.settings
+                this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
+                    draft.apiKeySecretName = next.apiKeySecretName
+                    draft.legacySecretMigratedAt = next.legacySecretMigratedAt
+                    if (next.apiKey === undefined) {
+                        delete draft.apiKey
+                    }
+                })
+            }
+            if (result.outcome === 'migrated') {
+                log(
+                    `API key copied to secret storage as "${result.settings.apiKeySecretName}"`,
+                    'info'
+                )
+            }
+            if (result.outcome === 'missing') {
+                new Notice(MISSING_API_KEY_MESSAGE, 0)
+            }
+            mustSave = mustSave || result.mustSave
+        } catch (err) {
+            // Nothing is dropped: getApiKey() still falls back to the legacy
+            // copy, and the next load retries.
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            log(`Could not store the API key in secret storage: ${msg}`, 'error')
+            new Notice(`REST and MCP server: could not access secret storage: ${msg}`)
+        }
+        if (mustSave) {
+            await this.saveSettings()
+        }
     }
 
     async saveSettings(): Promise<void> {

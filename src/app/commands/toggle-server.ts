@@ -1,6 +1,7 @@
 import { Notice } from 'obsidian'
 import type { CliRestMcpPlugin } from '../plugin'
 import { log } from '../../utils/log'
+import { MISSING_API_KEY_MESSAGE } from '../services/api-key-secret'
 
 /**
  * Register the toggle server command.
@@ -51,11 +52,15 @@ export function registerCopyApiKeyCommand(plugin: CliRestMcpPlugin): void {
         id: 'copy-api-key',
         name: 'Copy API key to clipboard',
         callback: () => {
-            if (!plugin.settings.apiKey) {
-                new Notice('No API key configured')
+            // Read from SecretStorage at use time.
+            const apiKey = plugin.getApiKey()
+            if (!apiKey) {
+                new Notice(
+                    plugin.isApiKeyMissing() ? MISSING_API_KEY_MESSAGE : 'No API key configured'
+                )
                 return
             }
-            void navigator.clipboard.writeText(plugin.settings.apiKey)
+            void navigator.clipboard.writeText(apiKey)
             new Notice('API key copied to clipboard')
         }
     })

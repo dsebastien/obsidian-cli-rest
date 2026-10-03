@@ -132,7 +132,7 @@ Claude Desktop's config file only accepts stdio servers, so it needs the `mcp-re
 The plugin is designed with security in mind:
 
 - **Localhost only** by default — only your machine can reach the server
-- **API key authentication** — auto-generated 64-character key, required for all CLI commands
+- **API key authentication** — auto-generated 64-character key, required for all CLI commands, kept in Obsidian's secret storage (not in your synced vault files)
 - **Dangerous commands disabled** — commands like `eval`, `restart`, and `devtools` are blocked unless you explicitly opt in
 - **Per-command blocklist** — block specific commands you don't want accessible
 - **No shell injection** — CLI commands use `execFile`, not `exec`

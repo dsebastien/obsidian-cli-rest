@@ -97,10 +97,3 @@
 .cli-rest-settings-embed {
     @apply block;
 }
-
-/* API key display field (read-only) */
-.cli-rest-api-key-field {
-    @apply font-mono;
-    width: 300px;
-    font-size: 11px;
-}

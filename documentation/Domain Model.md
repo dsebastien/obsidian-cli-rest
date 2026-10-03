@@ -6,7 +6,7 @@
 
 Zod-validated settings schema. See `src/app/types/plugin-settings.intf.ts`.
 
-11 fields: `autoStart`, `port`, `bindAddress`, `apiKey`, `requestTimeout`, `enableRestApi`, `enableMcp`, `allowDangerousCommands`, `blockedCommands`, `enableCors`, `defaultVault`.
+13 fields: `autoStart`, `port`, `bindAddress`, `apiKeySecretName`, `apiKey` (legacy, optional), `legacySecretMigratedAt`, `requestTimeout`, `enableRestApi`, `enableMcp`, `allowDangerousCommands`, `blockedCommands`, `enableCors`, `defaultVault`.
 
 ### CliCommandDefinition
 

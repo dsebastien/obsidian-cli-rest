@@ -16,10 +16,13 @@ When a new business rule is mentioned:
 ## Security
 
 - Default bind address MUST be `127.0.0.1` (localhost only). Remote access (`0.0.0.0`) requires explicit opt-in.
-- When bind address is `0.0.0.0`, API key MUST be non-empty. Auto-generate if empty.
+- When bind address is `0.0.0.0`, API key MUST be non-empty. Auto-generate only when no secret name is configured.
+- The API key MUST live in Obsidian SecretStorage; data.json holds only the secret name. New key values are never written to data.json.
+- Legacy plaintext `apiKey` in data.json is a read-only per-device bootstrap: each device copies it into its own SecretStorage on load, so no synced device needs any action. It is removed on key rotation / secret change, by the "Remove plain-text copy now" button, or 60 days after the first migration.
+- A configured secret missing on a device (and no legacy copy) MUST NOT be regenerated (it would break clients): show a Notice and settings hint, refuse to start the server.
 - CLI execution MUST use `child_process.execFile` (not `exec`) to prevent shell injection.
 - Dangerous commands (`eval`, `restart`, `devtools`, `dev:*`, `command`, `reload`, `plugins:restrict`) require `allowDangerousCommands` setting.
-- API key is auto-generated on first plugin enable via `crypto.randomBytes(32)`.
+- API key is auto-generated on first plugin enable (fresh install: no secret name, no legacy key) via `crypto.randomBytes(32)`, into SecretStorage.
 - A regenerated API key MUST take effect on a running server without a restart. The key is rebound in place (`HttpServerWrapper.updateApiKey`) because the listening socket does not depend on it, and a restart would force-close every in-flight MCP session. A key left stale is a security hole, not just an inconvenience: if the stale value is the empty string, auth stays disabled.
 
 ## CLI Requirement

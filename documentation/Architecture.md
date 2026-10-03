@@ -63,7 +63,7 @@ HTTP Request
 ### Plugin lifecycle (`src/app/plugin.ts`)
 
 - `ObsidianCliRestPlugin` extends Obsidian's `Plugin`
-- **onload**: Check CLI availability, discover CLI commands (if CLI available), generate API key (if missing), register commands, add settings tab, optionally auto-start server
+- **onload**: Check CLI availability, discover CLI commands (if CLI available), resolve API key secret (per-device legacy migration / fresh-install generation / missing warning, `api-key-secret.ts`), register commands, add settings tab, optionally auto-start server
 - **onunload**: Stop server and clean up resources
 - Status bar shows server state: address:port when running, "off" when stopped
 
@@ -109,7 +109,7 @@ HTTP Request
 
 - Organized into sections: Status, Server, Interfaces, Security, Command filtering, Advanced
 - Shows security warnings when binding to `0.0.0.0`
-- API key display with copy and regenerate buttons
+- API key: SecretComponent picker (stores the secret name), copy and regenerate buttons; "Remove plain-text copy now" row while the legacy field exists
 
 ## Security model
 

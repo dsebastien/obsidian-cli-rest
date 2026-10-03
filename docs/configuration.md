@@ -29,10 +29,10 @@ Both interfaces can be enabled or disabled independently. If both are disabled, 
 
 ### Security
 
-| Setting            | Type    | Default        | Description                                                 |
-| ------------------ | ------- | -------------- | ----------------------------------------------------------- |
-| API key            | string  | Auto-generated | 64-character hex token used for Bearer authentication       |
-| Dangerous commands | boolean | Off            | Allow dangerous commands like `eval`, `restart`, `devtools` |
+| Setting            | Type    | Default        | Description                                                                              |
+| ------------------ | ------- | -------------- | ---------------------------------------------------------------------------------------- |
+| API key            | secret  | Auto-generated | 64-character hex token used for Bearer authentication, kept in Obsidian's secret storage |
+| Dangerous commands | boolean | Off            | Allow dangerous commands like `eval`, `restart`, `devtools`                              |
 
 ### Command filtering
 
@@ -49,9 +49,19 @@ Both interfaces can be enabled or disabled independently. If both are disabled, 
 
 ## API key management
 
+### Where the key is stored
+
+The key is kept in Obsidian's secret storage on each device, not in the plugin's data file. The data file syncs with your vault (Git, Syncthing, cloud sync), so a key stored there would travel with every copy of the vault. The plugin settings only remember the name of the secret (by default `cli-rest-mcp-api-key`). Use the secret picker in the Security section to select or create a different secret.
+
+Secret storage is per device. On a device where the secret does not exist yet, the plugin shows a notice and refuses to start the server rather than invent a new key that would break your clients. Select the secret in the Security section and enter the same key as on your other devices.
+
+### Upgrading from older versions
+
+Older versions stored the key in plain text in the data file. Each device moves it into its own secret storage automatically on its next start: no action needed, your clients keep working. The plain-text copy stays in the data file so that every synced device can do this, and is removed automatically 60 days after the first migration. Once all your devices run this version, you can remove it right away with **Remove plain-text copy now** in the Security section.
+
 ### Auto-generation
 
-An API key is automatically generated the first time you enable the plugin. It is a 64-character hexadecimal string generated from 32 random bytes.
+An API key is automatically generated the first time you enable the plugin. It is a 64-character hexadecimal string generated from 32 random bytes, stored in secret storage.
 
 ### Copying the key
 
@@ -64,7 +74,7 @@ You can copy the API key in two ways:
 
 Select **Regenerate** in the Security section of plugin settings. A new key is generated and applied immediately — a running server starts accepting the new key and rejecting the old one on the next request, with no restart and without dropping live MCP sessions.
 
-You will need to update any scripts or MCP clients using the old key.
+You will need to update any scripts or MCP clients using the old key. The new key is written to this device's secret storage only, and any plain-text copy left by an older version is removed. Enter the new key on your other devices too (select the secret in the Security section).
 
 ### Authentication enforcement
 

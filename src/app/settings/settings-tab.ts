@@ -1,9 +1,9 @@
-import { Notice, PluginSettingTab } from 'obsidian'
+import { Notice, PluginSettingTab, SecretComponent } from 'obsidian'
 import type { App, Setting, SettingDefinitionItem } from 'obsidian'
 import type { CliRestMcpPlugin } from '../plugin'
-import { generateApiKey } from '../../utils/crypto'
 import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../assets/buy-me-a-coffee'
 import { renderSupportSection } from '../ui/support-links'
+import { LEGACY_PLAINTEXT_GRACE_DAYS } from '../services/api-key-secret'
 
 /**
  * Settings tab, declared rather than rendered (Obsidian 1.13+).
@@ -330,9 +330,30 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
             items: [
                 {
                     name: 'API key',
-                    desc: 'Bearer token for authenticating requests. Required when binding to 0.0.0.0.',
+                    desc: "Bearer token for authenticating requests. Stored in this device's secret storage, not in the vault: select or create the secret holding it. Required when binding to 0.0.0.0.",
+                    render: (setting): (() => void) => this.renderApiKeyControls(setting)
+                },
+                {
+                    name: 'Remove plain-text copy of the API key',
+                    desc: `Older versions kept the API key in plain text in the plugin's data file, which syncs with your vault. It stays there so each of your devices can move the key into its own secret storage on its next start, and is removed automatically ${LEGACY_PLAINTEXT_GRACE_DAYS} days after the first migration. Remove it now once all your devices run this version.`,
+                    visible: (): boolean => this.plugin.hasLegacyPlaintextApiKey(),
                     render: (setting): void => {
-                        this.renderApiKeyControls(setting)
+                        setting.addButton((button) => {
+                            button
+                                .setDestructive()
+                                .setButtonText('Remove plain-text copy now')
+                                .onClick(async () => {
+                                    try {
+                                        await this.plugin.removeLegacyPlaintextApiKey()
+                                        new Notice('Plain-text copy of the API key removed')
+                                    } catch (err) {
+                                        const msg =
+                                            err instanceof Error ? err.message : 'Unknown error'
+                                        new Notice(`Failed to remove the plain-text copy: ${msg}`)
+                                    }
+                                    this.update()
+                                })
+                        })
                     }
                 },
                 {
@@ -344,29 +365,61 @@ export class CliRestMcpSettingTab extends PluginSettingTab {
         }
     }
 
-    private renderApiKeyControls(setting: Setting): void {
+    /**
+     * The secret picker stores only the secret's NAME in the settings; the
+     * key itself stays in SecretStorage and is read when needed (Copy, server
+     * start). The missing-key warning goes in the description, which
+     * update() resets; the returned cleanup removes it anyway.
+     */
+    private renderApiKeyControls(setting: Setting): () => void {
         setting
-            .addText((text) => {
-                text.setValue(this.plugin.settings.apiKey)
-                    .setDisabled(true)
-                    .inputEl.addClass('cli-rest-api-key-field')
-            })
+            .addComponent((el) =>
+                new SecretComponent(this.app, el)
+                    .setValue(this.plugin.settings.apiKeySecretName)
+                    .onChange(async (name) => {
+                        try {
+                            await this.plugin.setApiKeySecretName(name)
+                        } catch (err) {
+                            const msg = err instanceof Error ? err.message : 'Unknown error'
+                            new Notice(`Failed to save the API key secret: ${msg}`)
+                        }
+                        this.update()
+                    })
+            )
             .addButton((button) => {
                 button.setButtonText('Copy').onClick(() => {
-                    void navigator.clipboard.writeText(this.plugin.settings.apiKey)
+                    // Read at use time (SecretStorage), never from settings.
+                    const apiKey = this.plugin.getApiKey()
+                    if (!apiKey) {
+                        new Notice('The API key secret is not set on this device.')
+                        return
+                    }
+                    void navigator.clipboard.writeText(apiKey)
                     new Notice('API key copied to clipboard')
                 })
             })
             .addButton((button) => {
                 button.setButtonText('Regenerate').onClick(async () => {
-                    await this.plugin.updateSettings((draft) => {
-                        draft.apiKey = generateApiKey()
-                    })
-                    this.plugin.syncServerAuth()
-                    new Notice('API key regenerated and applied. Update your clients.')
+                    try {
+                        await this.plugin.regenerateApiKey()
+                        new Notice('API key regenerated and applied. Update your clients.')
+                    } catch (err) {
+                        const msg = err instanceof Error ? err.message : 'Unknown error'
+                        new Notice(`Failed to regenerate the API key: ${msg}`)
+                    }
                     this.update()
                 })
             })
+
+        const warningEl = setting.descEl.createDiv()
+        if (this.plugin.isApiKeyMissing()) {
+            warningEl.addClass('cli-rest-warning')
+            warningEl.createEl('strong', { text: 'API key not set on this device. ' })
+            warningEl.createSpan({
+                text: 'Secret storage is per device and is not synced with the vault. Select the secret above and enter the same key as on your other devices, or regenerate it (then update your clients).'
+            })
+        }
+        return () => warningEl.remove()
     }
 
     private commandFilteringGroup(): SettingDefinitionItem {

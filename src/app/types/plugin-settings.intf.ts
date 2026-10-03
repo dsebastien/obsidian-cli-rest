@@ -4,7 +4,21 @@ export const pluginSettingsSchema = z.object({
     autoStart: z.boolean().default(true),
     port: z.number().int().min(1024).max(65535).default(27124),
     bindAddress: z.string().default('127.0.0.1'),
-    apiKey: z.string().default(''),
+    /**
+     * NAME of the SecretStorage entry holding the API key, never the key
+     * itself (data.json syncs with the vault). Empty until the first load
+     * assigns one. Read the key with `plugin.getApiKey()`.
+     */
+    apiKeySecretName: z.string().default(''),
+    /**
+     * LEGACY plaintext API key from before SecretStorage. Read-only bootstrap
+     * source so every synced device can migrate on its own; never written
+     * with a new value. Removed on rotation, by the settings button, or
+     * LEGACY_PLAINTEXT_GRACE_DAYS after `legacySecretMigratedAt`.
+     */
+    apiKey: z.string().optional(),
+    /** ISO date of the first migration of the legacy key; '' before it. */
+    legacySecretMigratedAt: z.string().default(''),
     requestTimeout: z.number().int().min(1000).max(300000).default(30000),
     enableRestApi: z.boolean().default(true),
     enableMcp: z.boolean().default(true),

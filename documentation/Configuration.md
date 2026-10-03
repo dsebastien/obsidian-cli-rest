@@ -2,19 +2,21 @@
 
 ## Settings reference
 
-| Setting                  | Type     | Default                               | Zod constraints  | Description                             |
-| ------------------------ | -------- | ------------------------------------- | ---------------- | --------------------------------------- |
-| `autoStart`              | boolean  | `true`                                | —                | Auto-start server on plugin load        |
-| `port`                   | number   | `27124`                               | int, 1024-65535  | HTTP server port                        |
-| `bindAddress`            | string   | `127.0.0.1`                           | —                | Bind address (`127.0.0.1` or `0.0.0.0`) |
-| `apiKey`                 | string   | `""` (auto-generated on first enable) | —                | Bearer token for authentication         |
-| `requestTimeout`         | number   | `30000`                               | int, 1000-300000 | CLI command timeout in ms               |
-| `enableRestApi`          | boolean  | `true`                                | —                | Enable REST API at `/api/v1/cli/*`      |
-| `enableMcp`              | boolean  | `true`                                | —                | Enable MCP server at `/mcp`             |
-| `allowDangerousCommands` | boolean  | `false`                               | —                | Allow dangerous commands                |
-| `blockedCommands`        | string[] | `[]`                                  | —                | CLI commands to block                   |
-| `enableCors`             | boolean  | `false`                               | —                | Allow cross-origin requests             |
-| `defaultVault`           | string   | `""`                                  | —                | Default vault name for requests         |
+| Setting                  | Type     | Default                  | Zod constraints  | Description                                                         |
+| ------------------------ | -------- | ------------------------ | ---------------- | ------------------------------------------------------------------- |
+| `autoStart`              | boolean  | `true`                   | —                | Auto-start server on plugin load                                    |
+| `port`                   | number   | `27124`                  | int, 1024-65535  | HTTP server port                                                    |
+| `bindAddress`            | string   | `127.0.0.1`              | —                | Bind address (`127.0.0.1` or `0.0.0.0`)                             |
+| `apiKeySecretName`       | string   | `""` (set on first load) | —                | NAME of the SecretStorage entry holding the API key (never the key) |
+| `apiKey`                 | string?  | absent                   | optional         | LEGACY plaintext key, read-only bootstrap; see below                |
+| `legacySecretMigratedAt` | string   | `""`                     | —                | ISO date of the first legacy-key migration                          |
+| `requestTimeout`         | number   | `30000`                  | int, 1000-300000 | CLI command timeout in ms                                           |
+| `enableRestApi`          | boolean  | `true`                   | —                | Enable REST API at `/api/v1/cli/*`                                  |
+| `enableMcp`              | boolean  | `true`                   | —                | Enable MCP server at `/mcp`                                         |
+| `allowDangerousCommands` | boolean  | `false`                  | —                | Allow dangerous commands                                            |
+| `blockedCommands`        | string[] | `[]`                     | —                | CLI commands to block                                               |
+| `enableCors`             | boolean  | `false`                  | —                | Allow cross-origin requests                                         |
+| `defaultVault`           | string   | `""`                     | —                | Default vault name for requests                                     |
 
 ## Settings schema
 
@@ -25,7 +27,9 @@ const pluginSettingsSchema = z.object({
     autoStart: z.boolean().default(true),
     port: z.number().int().min(1024).max(65535).default(27124),
     bindAddress: z.string().default('127.0.0.1'),
-    apiKey: z.string().default(''),
+    apiKeySecretName: z.string().default(''),
+    apiKey: z.string().optional(), // legacy, read-only bootstrap
+    legacySecretMigratedAt: z.string().default(''),
     requestTimeout: z.number().int().min(1000).max(300000).default(30000),
     enableRestApi: z.boolean().default(true),
     enableMcp: z.boolean().default(true),
@@ -40,10 +44,14 @@ const pluginSettingsSchema = z.object({
 
 ## API key
 
-- Auto-generated on first plugin enable via `crypto.randomBytes(32)` → 64-character hex string
-- Required when `bindAddress` is `0.0.0.0` (auto-generated if empty)
+- Stored in Obsidian's SecretStorage (device-local, minAppVersion ≥ 1.11.4), never in data.json. Settings hold only the secret NAME (default `cli-rest-mcp-api-key`, suffixed `-2`, `-3`… when that name already holds a different value). Logic: `src/app/services/api-key-secret.ts`.
+- Read at use time via `plugin.getApiKey()`: SecretStorage first, else the legacy plaintext `apiKey` (copied into SecretStorage on the spot).
+- Fresh install (no name, no legacy key): generated via `crypto.randomBytes(32)` → 64-char hex, stored in SecretStorage.
+- Legacy migration is per device: on every load, a device whose SecretStorage lacks the secret copies the legacy `apiKey` from data.json. The legacy field is never written with a new value; it is removed on Regenerate, on picking another secret, by **Remove plain-text copy now**, or automatically 60 days after `legacySecretMigratedAt`.
+- Name set but neither SecretStorage nor legacy field has a key: persistent Notice + settings hint; server refuses to start; never regenerated (would break clients). No logout/clear action exists (server key, not a session).
+- Required when `bindAddress` is `0.0.0.0` (auto-generated only when no secret name exists)
 - Sent as `Authorization: Bearer <key>` header
-- Can be regenerated from settings (requires server restart)
+- Regenerate applies to a running server without restart (`syncServerAuth`); a key that becomes missing stops the server instead of disabling auth
 
 ## Endpoints
 
